@@ -1,5 +1,5 @@
 ---
-title: "Admissions Report Card"
+title: "Admissions Report"
 author: "Graduate School Admissions, Georgia State U."
 date: "`r format(Sys.time(), '%d %B %Y')`"
 output:
@@ -11,7 +11,7 @@ output:
     toc_float: yes
 ---
 
-```{r include = FALSE}
+```{r include = FALSE, cache = FALSE}
 
 # SELECT COLLEGE: ASSIGN THE CORRESPONDING NUMBER TO 'COLLEGE'
 
@@ -104,7 +104,7 @@ graduate-level certificates.
 
 ## All Enrollment Over Time
 
-```{r}
+```{r cache = TRUE}
 
 min_fy <- min(all$fy, na.rm = TRUE)                         # Minimum FY
 max_fy <- max(all$fy, na.rm = TRUE)                         # Maximum FY
@@ -179,7 +179,7 @@ rate of **`r percent(avg_all_yld)`** each year.
 
 <br>
 
-```{r fig.height = 4, fig.width = 8, fig.align = "center"}
+```{r fig.height = 4, fig.width = 8, fig.align = "center", dpi = 320, cache = TRUE}
 
 # VISUALIZATION: ALL ENROLLMENT OVER TIME
 
@@ -213,7 +213,7 @@ ggplot(all_fy_viz, aes(x = fy,
 
 ## New Admissions Over Time
 
-```{r}
+```{r cache = TRUE}
 
 # LINEAR MODEL COEFFICIENTS: NEW V. CONTINUING STUDENTS
 
@@ -256,7 +256,7 @@ students enrolled (**`r percent(now_new_prc)`**).
 
 <br>
 
-```{r fig.height = 4, fig.width = 8, fig.align = "center"}
+```{r fig.height = 4, fig.width = 8, fig.align = "center", dpi = 320, cache = TRUE}
 
 # VISUALIZATION: NEW V. CONTINUING ENROLLMENT
 
@@ -295,8 +295,10 @@ shows a **`r clm_dir`** trend with a linear model coefficient of **`r clm`**.
 ## Official Enrollment Over Time
 
 Official graduate-level enrollment as defined by the Office of Institutional 
-Effectiveness ([**OIE**](https://oie.gsu.edu/)) excludes certificate-seekers, 
-non-degree students in graduate-level courses, and transient students. 
+Effectiveness ([**OIE**](https://oie.gsu.edu/)) includes solely Masters and 
+Doctoral degree-seeking students and excludes certificate-seekers, non-degree 
+students in graduate-level courses, and transient students. *Notably, unlike* 
+*OIE-defined enrollment, the following excludes cross-registered students.*
 
 The following summary enrollment data at the **`r college`** are reported to the 
 Integrated Postsecondary Education Data System 
@@ -309,7 +311,7 @@ academic term.
 
 ### View Official Enrollment
 
-```{r}
+```{r cache = TRUE}
 
 nmd_tot_avg <- mean(nmd_fy_tbl$Total, na.rm = TRUE)
 nmd_new_avg <- mean(nmd_fy_tbl$New, na.rm = TRUE)
@@ -345,7 +347,7 @@ students (**`r percent(nmd_con_avg_prc)`**).
 
 <br>
 
-```{r fig.height = 4, fig.width = 8, fig.align = "center"}
+```{r fig.height = 4, fig.width = 8, fig.align = "center", dpi = 320, cache = TRUE}
 
 ggplot(nmd_fy_viz, aes(x = fy, 
                        y = count,
@@ -381,7 +383,7 @@ enrollment of **`r comma(nmd_tot_rec)`** graduate students, comprised of
 
 <br>
 
-```{r}
+```{r cache = TRUE}
 
 nmd_fy_tbl %>%
   select(-level) %>%
@@ -400,7 +402,7 @@ nmd_fy_tbl %>%
 <br>
 <br>
 
-# Applications
+# Application Forecasts
 
 Between **FY `r min_fy`** and **FY `r max_fy`**, graduate-level programs in the 
 **`r college`** averaged **`r comma(avg_all_app)`** submissions each year. The 
@@ -422,7 +424,7 @@ Additional ARIMA model accuracy indicators are available in the appendix.
 
 ## FY `r max_fy + 1` Forecasts
 
-```{r}
+```{r cache = TRUE}
 
 # PREPARE TIMESERIES OBJECT
 
@@ -451,7 +453,7 @@ fit <- auto.arima(fy_ts,
 
 ```
 
-```{r include = FALSE}
+```{r include = FALSE, cache = TRUE}
 
 # CHECK RESIDUALS & ASSIGN P-VALUE
 
@@ -470,7 +472,7 @@ and a college-wide yield rate of **`r percent(rec_all_yld)`**.
 
 <br>
 
-```{r fig.height = 4, fig.width = 8, fig.align = "center"}
+```{r fig.height = 4, fig.width = 8, fig.align = "center", dpi = 320, cache = TRUE}
 
 # PREPARE AUTO-GENERATED VISUALIZATION ELEMENTS
 
@@ -500,7 +502,8 @@ fit %>%
        x = "Fiscal Year",
        y = "Applications",
        caption = "Source: GSU Data Warehouse,\nHyndman & Khandakar (2020)") +
-  theme_minimal()
+  theme_minimal() +
+  theme(plot.caption = element_text(lineheight = 1.1))
 
 
 
@@ -550,7 +553,7 @@ Model residuals have a p-value of **`r pval`**, indicating **`r pval_interp`**.
 
 ## Fall Term Forecasts
 
-```{r}
+```{r cache = TRUE}
 
 # PREPARE TIMESERIES FOR ALL TERMS
 
@@ -616,7 +619,7 @@ fit <- auto.arima(fall_ts,
 
 ```
 
-```{r include = FALSE}
+```{r include = FALSE, cache = TRUE}
 
 # CHECK RESIDUALS & ASSIGN P-VALUE
 
@@ -641,7 +644,7 @@ fiscal year enrollment.
 
 <br>
 
-```{r fig.height = 4, fig.width = 8, fig.align = "center"}
+```{r fig.height = 4, fig.width = 8, fig.align = "center", dpi = 320, cache = TRUE}
 
 # PREPARE AUTO-GENERATED VISUALIZATION ELEMENTS
 
@@ -671,7 +674,8 @@ fit %>%
        x = "Fiscal Year",
        y = "Applications",
        caption = "Source: GSU Data Warehouse,\nHyndman & Khandakar (2020)") +
-  theme_minimal()
+  theme_minimal() +
+  theme(plot.caption = element_text(lineheight = 1.1))
 
 
 
@@ -729,7 +733,7 @@ Model residuals have a p-value of **`r pval`**, indicating **`r pval_interp`**.
 
 ## Spring Term Forecasts
 
-```{r}
+```{r cache = TRUE}
 
 # PREPARE TIMESERIES FOR ALL TERMS
 
@@ -795,7 +799,7 @@ fit <- auto.arima(spring_ts,
 
 ```
 
-```{r include = FALSE}
+```{r include = FALSE, cache = TRUE}
 
 # CHECK RESIDUALS & ASSIGN P-VALUE
 
@@ -820,7 +824,7 @@ fiscal year enrollment.
 
 <br>
 
-```{r fig.height = 4, fig.width = 8, fig.align = "center"}
+```{r fig.height = 4, fig.width = 8, fig.align = "center", dpi = 320, cache = TRUE}
 
 # PREPARE AUTO-GENERATED VISUALIZATION ELEMENTS
 
@@ -850,7 +854,8 @@ fit %>%
        x = "Fiscal Year",
        y = "Applications",
        caption = "Source: GSU Data Warehouse,\nHyndman & Khandakar (2020)") +
-  theme_minimal()
+  theme_minimal() +
+  theme(plot.caption = element_text(lineheight = 1.1))
 
 
 
@@ -908,7 +913,7 @@ Model residuals have a p-value of **`r pval`**, indicating **`r pval_interp`**.
 
 ## Summer Term Forecasts
 
-```{r}
+```{r cache = TRUE}
 
 # PREPARE TIMESERIES FOR ALL TERMS
 
@@ -974,7 +979,7 @@ fit <- auto.arima(summer_ts,
 
 ```
 
-```{r include = FALSE}
+```{r include = FALSE, cache = TRUE}
 
 # CHECK RESIDUALS & ASSIGN P-VALUE
 
@@ -999,7 +1004,7 @@ fiscal year enrollment.
 
 <br>
 
-```{r fig.height = 4, fig.width = 8, fig.align = "center"}
+```{r fig.height = 4, fig.width = 8, fig.align = "center", dpi = 320, cache = TRUE}
 
 # PREPARE AUTO-GENERATED VISUALIZATION ELEMENTS
 
@@ -1029,7 +1034,8 @@ fit %>%
        x = "Fiscal Year",
        y = "Applications",
        caption = "Source: GSU Data Warehouse,\nHyndman & Khandakar (2020)") +
-  theme_minimal()
+  theme_minimal() +
+  theme(plot.caption = element_text(lineheight = 1.1))
 
 
 
@@ -1086,7 +1092,7 @@ Model residuals have a p-value of **`r pval`**, indicating **`r pval_interp`**.
 
 ## Seasonal & Cyclic Forecasts
 
-```{r}
+```{r cache = TRUE}
 
 # PREPARE TIMESERIES FOR ALL TERMS
 
@@ -1123,7 +1129,7 @@ fit <- auto.arima(all_ts,
 
 ```
 
-```{r include = FALSE}
+```{r include = FALSE, cache = TRUE}
 
 # CHECK RESIDUALS & ASSIGN P-VALUE
 
@@ -1146,7 +1152,7 @@ for cylicity and seasonality.
 
 <br>
 
-```{r fig.height = 4, fig.width = 8, fig.align = "center"}
+```{r fig.height = 4, fig.width = 8, fig.align = "center", dpi = 320, cache = TRUE}
 
 # PREPARE AUTO-GENERATED VISUALIZATION ELEMENTS
 
@@ -1171,22 +1177,25 @@ all_labs <- bind_rows(term_labs, pred_labs) %>%
 
 # VISUALIZE AUTO-ARIMA
 
+max_y <- max(as.numeric(all_ts), na.rm = TRUE) * 1.15
+
 fit %>% 
   forecast(h = 6) %>% 
   autoplot(fcol = "#0039A6") +
   scale_x_continuous(breaks = all_labs$position, 
                      labels = all_labs$fy) +
-  scale_y_continuous(labels = comma, 
-                     limits = c(0, NA)) +
-  coord_cartesian(ylim = c(0, 1000)) +
+  scale_y_continuous(labels = comma) +
+  coord_cartesian(ylim = c(0, max_y)) +
   labs(title = paste0("Predicted FY '", abb_max_fy + 1, 
                       " & '", abb_max_fy + 2,
                       " Term with Seasonality & Cyclicity, ", college, sep = " "),
        subtitle = paste("ARIMA Model", sub),
        x = "Fiscal Year",
        y = "Applications",
-       caption = "Source: GSU Data Warehouse,\nHyndman & Khandakar (2020)") +
-  theme_minimal()
+       caption = paste0("Truncated at 115% of maximum actual.\nSource: G",
+                        "SU Data Warehouse,\nHyndman & Khandakar (2020)")) +
+  theme_minimal() +
+  theme(plot.caption = element_text(lineheight = 1.1))
 
 
 
@@ -1264,7 +1273,7 @@ Additional forecasting for **FY `r max_fy + 2`** is provided in the following ta
 
 <center>
 
-```{r}
+```{r cache = TRUE}
 
 pred_table_final %>%
   kable() %>%
@@ -1298,7 +1307,7 @@ The following provides:
 
 ## FY `r max_fy + 1` Enrollment
 
-```{r}
+```{r cache = TRUE}
 
 fy_enrolled <- all %>%
   filter(level == "Degree") %>%
@@ -1329,7 +1338,7 @@ Increasing this rolling average by 3% yields a total annual goal of
 
 <br>
 
-```{r fig.height = 4, fig.width = 8, fig.align = "center"}
+```{r fig.height = 4, fig.width = 8, fig.align = "center", dpi = 320, cache = TRUE}
 
 fy_enr_viz <- fy_enrolled %>%
   select(fy, enrolled) %>%
@@ -1374,7 +1383,7 @@ indicate a **`r fy_enr_coef_dir`** trend with a coefficient of
 
 ## Enrollment by Term
 
-```{r}
+```{r cache = TRUE}
 
 fy_enr_terms <- all %>%
   filter(level == "Degree") %>%
@@ -1467,13 +1476,13 @@ respectively.
 
 ### View Goals by Term
 
-The following visualizes the **`r college`'s** graduate-level and degree-seeking 
-target enrollees, historical enrollment, and linear trendlines by academic term 
-from **FY `r min_fy`** to **FY `r max_fy`**. 
+The following sparklines visualize the **`r college`'s** graduate-level and 
+degree-seeking target enrollees, historical enrollment, and  trendlines by 
+academic term from **FY `r min_fy`** to **FY `r max_fy`**. 
 
 <br>
 
-```{r fig.height = 4, fig.width = 8, fig.align = "center"}
+```{r fig.height = 4, fig.width = 8, fig.align = "center", dpi = 320, cache = TRUE}
 
 # PROPORTIONAL GOALS BY TERM: VISUALIZATION
 
@@ -1560,7 +1569,7 @@ are organized as follows:
 
 <br>
 
-```{r}
+```{r cache = TRUE}
 
 # PROPORTIONAL GOALS BY TERM: TABLE
 
@@ -1588,10 +1597,438 @@ new_term_table %>%
 
 ## Enrollment by Program
 
+```{r cache = TRUE}
+
+# PREP DATA SETS
+
+prg_enr <- all %>%
+  filter(level == "Degree") %>%
+  rename(term = term_full) %>%
+  mutate(season = gsub(x = term, " .*$", ""),
+         season = factor(season, 
+                         levels = c("Summer", "Fall", "Spring"),
+                         ordered = TRUE),
+         cy = gsub(x = term, "^.* ", "")) %>%
+  select(fy, term, cy, season, program, enrolled)
+
+prg_enr_fy <- prg_enr %>%
+  group_by(fy) %>%
+  summarize(fy_enrolled = sum(enrolled, na.rm = TRUE)) %>%
+  ungroup()
+
+prg_enr_term <- prg_enr %>%
+  group_by(fy, cy, season, term) %>%
+  summarize(tot_programs = n(),
+            term_enrolled = sum(enrolled, na.rm = TRUE)) %>%
+  ungroup() %>%
+  arrange(fy, season)
+
+programs_prep <- prg_enr %>%
+  left_join(prg_enr_term) %>%
+  left_join(prg_enr_fy) %>%
+  mutate(prg_fy_prc = enrolled / fy_enrolled,
+         prg_trm_prc = enrolled / term_enrolled,
+         trm_fy_prc = term_enrolled / fy_enrolled)
+
+prg_prep_2yr <- programs_prep %>%
+  filter(fy >= max_fy - 1)
+
+avg_contribution <- prg_prep_2yr %>%
+  group_by(season, program) %>%
+  summarize(avg_term_contribution = mean(prg_trm_prc)) %>%
+  ungroup()
+
+program_goals <- new_term_goals %>%
+  mutate(season = gsub(x = term, " .*$", "")) %>%
+  right_join(avg_contribution) %>%
+  rename(term_to_fy_contr = avg_enr_prc,
+         new_fy_contribution = contribution,
+         prg_to_term_contribution = avg_term_contribution) %>%
+  mutate(term_enr_goals = prg_to_term_contribution * new_fy_contribution)
+  
+```
+
+During **FY `r max_fy - 1`** and **FY `r max_fy`**, the **`r college`** averaged 
+**`r percent(new_term_viz$enr_prc[1])`**, 
+**`r percent(new_term_viz$enr_prc[2])`**, 
+and **`r percent(new_term_viz$enr_prc[3])`** 
+contributions to official graduate-level enrollment in the 
+**`r new_term_viz$season[1]`**, **`r new_term_viz$season[2]`**, and 
+**`r new_term_viz$season[3]`** terms, respectively. 
+
+Applying a 3% increase to individual **`r college`** programs, the following 
+calculates and provides recommended enrollment by both program and semester for
+**FY `r max_fy + 1`**.
+
 <br>
 <br>
 
-# Recommendations
+### `r new_term_goals$term[1]` Programs
+
+The two-year rolling average contribution of 
+**`r percent(new_term_goals$avg_enr_prc[1])`** for **`r new_term_goals$term[1]`** 
+of programs in **FY `r max_fy + 1`**, increased by 3%, result in the following 
+recommended program enrollment goal(s) among 
+**`r comma(new_term_goals$contribution[1])`** graduate-level students.
+
+<br>
+
+```{r cache = TRUE}
+
+program_goals_filt <- program_goals %>%
+  filter(term == new_term_goals$term[1]) %>%
+  mutate(new_fy_contribution = new_fy_contribution * prg_to_term_contribution) %>%
+  arrange(desc(new_fy_contribution))
+
+program_goals_filt_tbl <- program_goals_filt %>%
+  mutate(term_to_fy_contr = percent(term_to_fy_contr),
+         new_fy_contribution = comma(new_fy_contribution),
+         prg_to_term_contribution = percent(prg_to_term_contribution),
+         fy = max_fy + 1) %>%
+  select(fy, term, program, new_fy_contribution, prg_to_term_contribution) %>%
+  rename("FY" = fy,
+         "Term" = term,
+         "Program" = program,
+         "Enrollees" = new_fy_contribution,
+         "Contribution (%)" = prg_to_term_contribution)
+
+```
+
+```{r cache = TRUE}
+
+# PREP DYNAMIC GRAPHICAL ELEMENTS
+
+n_new_students <- sum(program_goals_filt$term_enr_goals, na.rm = TRUE)
+
+top_lab <- NA
+
+if (nrow(program_goals_filt) == 1){
+  
+  top_lab <- "Sole Program Enrollment Target"
+  
+} else if (nrow(program_goals_filt) > 1 & nrow(program_goals_filt) < 10){
+  
+  top_lab <- "Program Enrollment Targets"
+  
+} else {
+  
+  top_lab <- "Top 10 Program Enrollment Targets"
+  
+}
+
+programs_viz <- program_goals_filt %>%
+  arrange(desc(new_fy_contribution)) %>%
+  mutate(id = 1:nrow(program_goals_filt)) %>%
+  filter(id <= 10)
+
+
+
+# DYNAMIC KNITR PLOT DIMENSIONS
+
+n_programs <- nrow(programs_viz)
+
+plot_size <- NA
+
+if (n_programs >= 8){
+  
+  plot_size <- 4
+  
+} else if (n_programs >= 6 & n_programs < 8){
+  
+  plot_size <- 3.5
+  
+} else if (n_programs >= 4 & n_programs < 6){
+  
+  plot_size <- 3
+  
+} else if (n_programs >= 2 & n_programs < 4){
+  
+  plot_size <- 2.5
+  
+} else if (n_programs == 1){
+  
+  plot_size <- 2
+  
+}
+
+```
+
+```{r fig.height = plot_size, fig.width = 8, fig.align = "center", dpi = 320, cache = TRUE}
+
+ggplot(programs_viz, aes(x = reorder(program, new_fy_contribution), y = round(new_fy_contribution))) +
+  geom_bar(stat = "identity",
+           fill = "#0071CE",
+           alpha = 0.6) +
+  scale_y_continuous(label = comma) + 
+  labs(x = NULL,
+       y = "Target Enrollees",
+       title = paste0(top_lab, ", ", college),
+       subtitle = paste(programs_viz$term[1], "Term;", comma(n_new_students), "Target Enrollees"),
+       caption = "Source: GSU Data Warehouse") +
+  coord_flip() +
+  theme_minimal()
+
+```
+
+<br>
+
+```{r cache = TRUE}
+
+# PRINT STYLIZED TABLE
+
+program_goals_filt_tbl %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("hover", "striped"))
+
+```
+
+<br>
+<br>
+
+
+
+### `r new_term_goals$term[2]` Programs
+
+The two-year rolling average contribution of 
+**`r percent(new_term_goals$avg_enr_prc[2])`** for **`r new_term_goals$term[2]`** 
+of programs in **FY `r max_fy + 1`**, increased by 3%, result in the following 
+recommended program enrollment goal(s) among 
+**`r comma(new_term_goals$contribution[2])`** graduate-level students.
+
+<br>
+
+```{r cache = TRUE}
+
+program_goals_filt <- program_goals %>%
+  filter(term == new_term_goals$term[2]) %>%
+  mutate(new_fy_contribution = new_fy_contribution * prg_to_term_contribution) %>%
+  arrange(desc(new_fy_contribution))
+
+program_goals_filt_tbl <- program_goals_filt %>%
+  mutate(term_to_fy_contr = percent(term_to_fy_contr),
+         new_fy_contribution = comma(new_fy_contribution),
+         prg_to_term_contribution = percent(prg_to_term_contribution),
+         fy = max_fy + 1) %>%
+  select(fy, term, program, new_fy_contribution, prg_to_term_contribution) %>%
+  rename("FY" = fy,
+         "Term" = term,
+         "Program" = program,
+         "Enrollees" = new_fy_contribution,
+         "Contribution (%)" = prg_to_term_contribution)
+
+```
+
+```{r cache = TRUE}
+
+# PREP DYNAMIC GRAPHICAL ELEMENTS
+
+n_new_students <- sum(program_goals_filt$term_enr_goals, na.rm = TRUE)
+
+top_lab <- NA
+
+if (nrow(program_goals_filt) == 1){
+  
+  top_lab <- "Sole Program Enrollment Target"
+  
+} else if (nrow(program_goals_filt) > 1 & nrow(program_goals_filt) < 10){
+  
+  top_lab <- "Program Enrollment Targets"
+  
+} else {
+  
+  top_lab <- "Top 10 Program Enrollment Targets"
+  
+}
+
+programs_viz <- program_goals_filt %>%
+  arrange(desc(new_fy_contribution)) %>%
+  mutate(id = 1:nrow(program_goals_filt)) %>%
+  filter(id <= 10)
+
+
+
+# DYNAMIC KNITR PLOT DIMENSIONS
+
+n_programs <- nrow(programs_viz)
+
+plot_size <- NA
+
+if (n_programs >= 8){
+  
+  plot_size <- 4
+  
+} else if (n_programs >= 6 & n_programs < 8){
+  
+  plot_size <- 3.5
+  
+} else if (n_programs >= 4 & n_programs < 6){
+  
+  plot_size <- 3
+  
+} else if (n_programs >= 2 & n_programs < 4){
+  
+  plot_size <- 2.5
+  
+} else if (n_programs == 1){
+  
+  plot_size <- 2
+  
+}
+
+```
+
+```{r fig.height = plot_size, fig.width = 8, fig.align = "center", dpi = 320, cache = TRUE}
+
+ggplot(programs_viz, aes(x = reorder(program, new_fy_contribution), y = round(new_fy_contribution))) +
+  geom_bar(stat = "identity",
+           fill = "#0071CE",
+           alpha = 0.6) +
+  scale_y_continuous(label = comma) + 
+  labs(x = NULL,
+       y = "Target Enrollees",
+       title = paste0(top_lab, ", ", college),
+       subtitle = paste(programs_viz$term[1], "Term;", comma(n_new_students), "Target Enrollees"),
+       caption = "Source: GSU Data Warehouse") +
+  coord_flip() +
+  theme_minimal()
+
+```
+
+<br>
+
+```{r cache = TRUE}
+
+# PRINT STYLIZED TABLE
+
+program_goals_filt_tbl %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("hover", "striped"))
+
+```
+
+<br>
+<br>
+
+
+
+### `r new_term_goals$term[3]` Programs
+
+The two-year rolling average contribution of 
+**`r percent(new_term_goals$avg_enr_prc[3])`** for **`r new_term_goals$term[3]`** 
+of programs in **FY `r max_fy + 1`**, increased by 3%, result in the following 
+recommended program enrollment goal(s) among 
+**`r comma(new_term_goals$contribution[3])`** graduate-level students.
+
+<br>
+
+```{r cache = TRUE}
+
+program_goals_filt <- program_goals %>%
+  filter(term == new_term_goals$term[3]) %>%
+  mutate(new_fy_contribution = new_fy_contribution * prg_to_term_contribution) %>%
+  arrange(desc(new_fy_contribution))
+
+program_goals_filt_tbl <- program_goals_filt %>%
+  mutate(term_to_fy_contr = percent(term_to_fy_contr),
+         new_fy_contribution = comma(new_fy_contribution),
+         prg_to_term_contribution = percent(prg_to_term_contribution),
+         fy = max_fy + 1) %>%
+  select(fy, term, program, new_fy_contribution, prg_to_term_contribution) %>%
+  rename("FY" = fy,
+         "Term" = term,
+         "Program" = program,
+         "Enrollees" = new_fy_contribution,
+         "Contribution (%)" = prg_to_term_contribution)
+
+```
+
+```{r cache = TRUE}
+
+# PREP DYNAMIC GRAPHICAL ELEMENTS
+
+n_new_students <- sum(program_goals_filt$term_enr_goals, na.rm = TRUE)
+
+top_lab <- NA
+
+if (nrow(program_goals_filt) == 1){
+  
+  top_lab <- "Sole Program Enrollment Target"
+  
+} else if (nrow(program_goals_filt) > 1 & nrow(program_goals_filt) < 10){
+  
+  top_lab <- "Program Enrollment Targets"
+  
+} else {
+  
+  top_lab <- "Top 10 Program Enrollment Targets"
+  
+}
+
+programs_viz <- program_goals_filt %>%
+  arrange(desc(new_fy_contribution)) %>%
+  mutate(id = 1:nrow(program_goals_filt)) %>%
+  filter(id <= 10)
+
+
+
+# DYNAMIC KNITR PLOT DIMENSIONS
+
+n_programs <- nrow(programs_viz)
+
+plot_size <- NA
+
+if (n_programs >= 8){
+  
+  plot_size <- 4
+  
+} else if (n_programs >= 6 & n_programs < 8){
+  
+  plot_size <- 3.5
+  
+} else if (n_programs >= 4 & n_programs < 6){
+  
+  plot_size <- 3
+  
+} else if (n_programs >= 2 & n_programs < 4){
+  
+  plot_size <- 2.5
+  
+} else if (n_programs == 1){
+  
+  plot_size <- 2
+  
+}
+
+```
+
+```{r fig.height = plot_size, fig.width = 8, fig.align = "center", dpi = 320, cache = TRUE}
+
+ggplot(programs_viz, aes(x = reorder(program, new_fy_contribution), y = round(new_fy_contribution))) +
+  geom_bar(stat = "identity",
+           fill = "#0071CE",
+           alpha = 0.6) +
+  scale_y_continuous(label = comma) + 
+  labs(x = NULL,
+       y = "Target Enrollees",
+       title = paste0(top_lab, ", ", college),
+       subtitle = paste(programs_viz$term[1], "Term;", comma(n_new_students), "Target Enrollees"),
+       caption = "Source: GSU Data Warehouse") +
+  coord_flip() +
+  theme_minimal()
+
+```
+
+<br>
+
+```{r cache = TRUE}
+
+# PRINT STYLIZED TABLE
+
+program_goals_filt_tbl %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("hover", "striped"))
+
+```
 
 <br>
 <br>
@@ -1600,9 +2037,12 @@ new_term_table %>%
 
 With access to the `BREPTS` and `WPRD` database in the GSU Data Warehouse, 
 database queries, preprocessing, and report creation for the **`r college`** 
-*Admissions Report Card* are reproducible in their entirety, from raw data to
-the present data product, using scripts located in this 
+*Admissions Report* are reproducible in their entirety, from raw data to the 
+present data product, using documentation found in this 
 [**GitHub repository**](https://github.com/jamisoncrawford/admissions).
+
+* **Last Updated:** 2020-03-04
+* **Version:** 1.0
 
 <br>
 <br>
@@ -1642,6 +2082,49 @@ on `r format(Sys.time(), '%d %B %Y')`.
 <br>
 <br>
 
+# Contact
+
+Contact information for offices and authors of the *Admissions Report*.
+
+<br>
+
+
+
+### Schools & Offices
+
+Contact [**The Graduate School's Graduate Admissions**](https://graduate.gsu.edu/) 
+at Georgia State University:
+
+* **Hours:** Monday-Friday, 8:30 a.m. to 5:15 p.m.
+* **Phone:** (404) 413-2444
+* **Email:** [**gradapply@gsu.edu**](mailto:gradapply@gsu.edu)
+* **Location:** Sparks Hall 200
+
+Contact the [**Office of Institutional Effectiveness**](https://oie.gsu.edu/) 
+at Georgia State University:
+
+* **Phone:** (404) 413-2601
+* **Location:** 1 Park Place South, Ste 1001
+
+<br>
+
+
+
+### Report Authors
+
+Contact Lita M. Malveaux, Director of Graduate Admissions:
+
+* **Phone:** (404) 413-2559
+* **Email:** [**lmalveaux@gsu.edu**](mailto:lmalveaux@gsu.edu)
+
+Contact Jamison R. Crawford, Institutional Research Associate:
+
+* **Phone:** (404) 413-1404
+* **Email:** [**jcrawford52@gsu.edu**](mailto:jcrawford52@gsu.edu)
+
+<br>
+<br>
+
 # Appendix
 
 <br>
@@ -1657,7 +2140,7 @@ employs unit root tests, minimizes additive errors via *Akaike's Information*
 and calculates maximum likelihood estimation based on *n* intervals per the 
 **`r college`'s** available historical data.
 
-```{r}
+```{r cache = TRUE}
 
 fit_fy <- auto.arima(fy_ts, 
                   lambda = 0,
@@ -1723,12 +2206,10 @@ appearance (see `Model`).
 
 <br>
 
-```{r}
+```{r cache = TRUE}
 
 arima_models %>%
   kable() %>%
   kable_styling(bootstrap_options = c("hover", "striped"), full_width = FALSE)
 
 ```
-
-
