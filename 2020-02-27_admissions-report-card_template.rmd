@@ -1596,6 +1596,17 @@ new_term_table %>%
 <br>
 <br>
 
+# Documentation
+
+With access to the `BREPTS` and `WPRD` database in the GSU Data Warehouse, 
+database queries, preprocessing, and report creation for the **`r college`** 
+*Admissions Report Card* are reproducible in their entirety, from raw data to
+the present data product, using scripts located in this 
+[**GitHub repository**](https://github.com/jamisoncrawford/admissions).
+
+<br>
+<br>
+
 # References
 
 **Akiake, Hirotogu (1998).**
