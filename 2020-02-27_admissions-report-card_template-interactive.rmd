@@ -51,6 +51,8 @@ library(zoo)
 library(readr)
 library(dplyr)
 library(tidyr)
+library(shiny)
+library(plotly)
 library(scales)
 library(GGally)
 library(pander)
@@ -183,32 +185,68 @@ rate of **`r percent(avg_all_yld)`** each year.
 
 <br>
 
-```{r fig.height = 4, fig.width = 8, fig.align = "center", dpi = 320, cache = TRUE}
+```{r out.width = "100%", out.height = "100%", fig.align = "center", dpi = 320}
 
 # VISUALIZATION: ALL ENROLLMENT OVER TIME
 
-ggplot(all_fy_viz, aes(x = fy, 
-                       y = count, 
-                       fill = factor(status, 
-                                     levels = c("applied", 
-                                                "accepted",
-                                                "enrolled"), 
-                                     labels = c("Applied",
-                                                "Accepted",
-                                                "Enrolled")))) +
+all_fy_viz <- all_fy_viz %>%
+  mutate(status = factor(status, 
+                         levels = c("applied", 
+                                    "accepted",
+                                    "enrolled"), 
+                         labels = c("Applied",
+                                    "Accepted",
+                                    "Enrolled"))) %>%
+         rename("FY" = fy,
+                "Enrollees" = count,
+                "Status" = status)
+
+viz <- ggplot(all_fy_viz, aes(x = FY, 
+                       y = Enrollees, 
+                       fill = Status)) +
   geom_area(alpha = 0.6) +
+  lims(x = c(min_fy - 1, NA)) +
   labs(fill = "Category",
-       x = "Fiscal Year",
-       y = "Count",
-       title = "All Applied, Accepted, & Enrolled Graduate Students",
-       subtitle = paste0(college, ", Fiscal Years ", 
-                         min_fy, " - ", max_fy),
-       caption = 'Source: GSU Data Warehouse') +
+       x = NULL,
+       y = "Applicants") +
   scale_y_continuous(labels = comma) +
   theme_minimal() +
   scale_fill_manual(values = c("#97CAEB",
                                "#0071CE",
                                "#0039A6"))
+
+title <- "Admissions by Decision"
+
+subtitle <- paste0(college, ", Fiscal Years ", min_fy, " - ", max_fy)
+
+ggplotly(viz) %>%
+  layout(legend = list(orientation = "h",
+                       x = 0.04, 
+                       y = -0.0575, 
+                       name = "Test",
+                       bgcolor = alpha("#FFFFFF", 0.6)),
+         margin = list(t = 50, b = 50),
+         yaxis = list(tickformat = ","),
+         annotations = list(list(x = 0.0225, 
+                                 y = 1.15, 
+                                 text = title, 
+                                 font = list(size = 20,
+                                             face = "bold"),
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper'),
+                            list(x = 0.0225, 
+                                 y = 1.075, 
+                                 text = subtitle, 
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper'),
+                            list(x = 0.976, 
+                                 y = -0.125, 
+                                 text = "Source: GSU Data Warehouse", 
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper')))
 
 ```
 
@@ -260,30 +298,62 @@ students enrolled (**`r percent(now_new_prc)`**).
 
 <br>
 
-```{r fig.height = 4, fig.width = 8, fig.align = "center", dpi = 320, cache = TRUE}
+```{r out.width = "100%", out.height = "100%", fig.align = "center", dpi = 320}
 
 # VISUALIZATION: NEW V. CONTINUING ENROLLMENT
 
-ggplot(new_fy_viz, aes(x = fy, 
-                       y = count)) +
+new_fy_viz <- new_fy_viz %>%
+  rename(FY = fy,
+         Enrollees = count) %>%
+  mutate(Status = factor(status, 
+                         levels = c("enr_new", 
+                                    "enr_con"),
+                         labels = c("New",
+                                    "Continuing")))
+
+viz <- ggplot(new_fy_viz, aes(x = FY, 
+                       y = Enrollees)) +
   geom_smooth(method = "lm",
               alpha = 0.1,
               color = alpha("#0039A6", 0.25)) +
   geom_path(size = 1.05) +
+  lims(x = c(min_fy - 1, NA)) +
   labs(fill = "Category",
-       x = "Fiscal Year",
-       y = "Count",
-       title = "Newly Enrolled v. Continuing Graduate Students",
-       subtitle = paste0(college, ", Fiscal Years ", 
-                         min_fy, " - ", max_fy),
-       caption = 'Source: GSU Data Warehouse') +
+       x = NULL,
+       y = NULL) +
   scale_y_continuous(labels = comma) +
   theme_minimal() +
-  facet_wrap(~factor(status, 
-                     levels = c("enr_new", 
-                                "enr_con"), 
-                     labels = c("New",
-                                "Continuing")))
+  facet_wrap(~Status)
+
+title <- "Newly Enrolled v. Continuing"
+
+subtitle <- paste0(college, ", Fiscal Years ", min_fy, " - ", max_fy)
+
+grobly <- ggplotly(viz)
+
+grobly %>%
+  layout(margin = list(t = 75, b = 50),
+         yaxis = list(tickformat = ","),
+         annotations = list(list(x = 0.0225, 
+                                 y = 1.235, 
+                                 text = title, 
+                                 font = list(size = 20,
+                                             face = "bold"),
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper'),
+                            list(x = 0.0225, 
+                                 y = 1.16, 
+                                 text = subtitle, 
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper'),
+                            list(x = 1, 
+                                 y = -0.145, 
+                                 text = "Source: GSU Data Warehouse", 
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper')))
 
 ```
 
@@ -351,27 +421,63 @@ students (**`r percent(nmd_con_avg_prc)`**).
 
 <br>
 
-```{r fig.height = 4, fig.width = 8, fig.align = "center", dpi = 320, cache = TRUE}
+```{r out.width = "100%", out.height = "100%", fig.align = "center", dpi = 320}
 
-ggplot(nmd_fy_viz, aes(x = fy, 
-                       y = count,
-                       fill = factor(x = status, 
-                    levels = c("Continuing", 
-                               "New"), 
-                    ordered = TRUE))) +
+nmd_fy_viz <- nmd_fy_viz %>%
+  rename(FY = fy,
+         Enrollees = count) %>%
+  mutate(Status = factor(x = status, 
+                         levels = c("Continuing", 
+                                    "New"),
+                         ordered = TRUE))
+
+viz <- ggplot(nmd_fy_viz, aes(x = FY, 
+                       y = Enrollees,
+                       fill = Status, 
+                    ordered = TRUE)) +
   geom_area(alpha = 0.5) +
+  lims(x = c(min_fy - 1, NA)) +
   labs(fill = "Category",
-       x = "Fiscal Year",
-       y = "Count",
-       title = "OIE-Defined Graduate Enrollment Over Time",
-       subtitle = paste0(college, ", Fiscal Years ", 
-                         min_fy, " - ", max_fy),
-       caption = 'Source: GSU Data Warehouse, OIE') +
+       x = NULL,
+       y = "Enrollees") +
   scale_y_continuous(labels = comma) +
   theme_minimal() +
   scale_fill_manual(values = c("#97CAEB",
                                "#0071CE",
                                "#0039A6"))
+
+title <- "OIE-Defined Enrollment"
+
+subtitle <- paste0(college, ", Fiscal Years ", min_fy, " - ", max_fy)
+
+ggplotly(viz) %>%
+  layout(legend = list(orientation = "h",
+                       x = 0.04, 
+                       y = -0.051775, 
+                       name = "Test",
+                       bgcolor = alpha("#FFFFFF", 0.6)),
+         margin = list(t = 55, b = 50),
+         yaxis = list(tickformat = ","),
+         annotations = list(list(x = 0.0225, 
+                                 y = 1.175, 
+                                 text = title, 
+                                 font = list(size = 20,
+                                             face = "bold"),
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper'),
+                            list(x = 0.0225, 
+                                 y = 1.1, 
+                                 text = subtitle, 
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper'),
+                            list(x = 0.976, 
+                                 y = -0.125, 
+                                 text = "Source: GSU Data Warehouse", 
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper')))
 
 ```
 
@@ -444,7 +550,8 @@ fy_ts_prep <- all %>%
 
 fy_ts <- fy_ts_prep %>%
   select(applied) %>%
-  ts()
+  ts(start = min_fy,
+     end = max_fy)
 
 
 
@@ -476,7 +583,7 @@ and a college-wide yield rate of **`r percent(rec_all_yld)`**.
 
 <br>
 
-```{r fig.height = 4, fig.width = 8, fig.align = "center", dpi = 320, cache = TRUE}
+```{r}
 
 # PREPARE AUTO-GENERATED VISUALIZATION ELEMENTS
 
@@ -488,28 +595,9 @@ abb_max_fy <- as.integer(substr(max_fy, 3, 4))
 fy_labs <- data.frame(fy = min_fy:(max_fy + 2)) %>%
   mutate(lab = paste0("'", substr(fy, 3, 4)))
 
+```
 
-
-# VISUALIZE AUTO-ARIMA
-
-fit %>% 
-  forecast(h = 2) %>% 
-  autoplot(fcol = "#0039A6") +
-  scale_y_continuous(labels = comma, 
-                     limits = c(0, NA)) +
-  scale_x_continuous(labels = fy_labs$lab,
-                     breaks = 1:(length(fy_labs$fy))) +
-  labs(title = paste0("Predicted FY '", abb_max_fy + 1, 
-                      " & '", abb_max_fy + 2,
-                      " Applications, ", college, sep = " "),
-       subtitle = paste("ARIMA Model", sub),
-       x = "Fiscal Year",
-       y = "Applications",
-       caption = "Source: GSU Data Warehouse,\nHyndman & Khandakar (2020)") +
-  theme_minimal() +
-  theme(plot.caption = element_text(lineheight = 1.1))
-
-
+```{r}
 
 # CREATE PREDICTION TABLES
 
@@ -521,7 +609,8 @@ pred_sum <- forecast(fit, h = 2) %>%
          pl95 = Lo.95,
          ph95 = Hi.95)
 
-pred_fy <- data.frame(fy = c(fy_ts_prep$fy[nrow(fy_ts_prep)] + 1, fy_ts_prep$fy[nrow(fy_ts_prep)] + 2))
+pred_fy <- data.frame(fy = c(fy_ts_prep$fy[nrow(fy_ts_prep)] + 1, 
+                             fy_ts_prep$fy[nrow(fy_ts_prep)] + 2))
 
 pred_table <- bind_cols(pred_fy,
                         pred_sum) %>%
@@ -531,6 +620,79 @@ pred_table <- bind_cols(pred_fy,
          pl95 = comma(pl95),
          ph95 = comma(ph95)) %>%
   select(fy, pfc:ph95)
+
+```
+
+```{r out.width = "100%", out.height = "100%", fig.align = "center", dpi = 320}
+
+# MANIPULATE FORECAST OBJECT INTERNALS
+
+fore <- forecast(object = fit, h = 2)
+
+fore$lower <- round(fore$lower)
+fore$upper <- round(fore$upper)
+
+max_y <- max(c(max(fore$x), max(fore$upper)))
+
+
+
+# VISUALIZE AUTO-ARIMA
+
+title <- paste0("Predicted FY '", abb_max_fy + 1, 
+                " & '", abb_max_fy + 2,
+                " Applications", sep = " ")
+
+subtitle <- paste0("ARIMA Model ", sub, ", ", college)
+
+plot_ly() %>% 
+  add_lines(x = time(fy_ts), 
+            y = fy_ts,
+            color = I("black"), 
+            name = "Observed") %>% 
+  add_lines(x = time(fore$mean), 
+            y = fore$mean, 
+            color = I(alpha("#0039A6", 1)), 
+            name = "Forecasted") %>%
+    add_ribbons(x = time(fore$mean), 
+              ymin = fore$lower[, 1], 
+              ymax = fore$upper[, 1],
+              color = I(alpha("#0071CE", 0.6)), 
+              name = "80% Confidence") %>%
+    add_ribbons(x = time(fore$mean), 
+              ymin = fore$lower[, 2], 
+              ymax = fore$upper[, 2],
+              color = I(alpha("#97CAEB", 0.6)), 
+              name = "95% Confidence") %>%
+  layout(legend = list(orientation = "h",
+                       x = 0, 
+                       y = -0.051775, 
+                       name = "Test",
+                       bgcolor = alpha("#FFFFFF", 0.6)),
+         margin = list(r = 12.5, t = 50, b = 50),
+         yaxis = list(range = c(0, max_y),
+                      tickformat = ","),
+         xaxis = list(range = c(min_fy - 1, 
+                                max_fy + 2)),
+         annotations = list(list(x = 0.0225, 
+                                 y = 1.15, 
+                                 text = title, 
+                                 font = list(size = 20,
+                                             face = "bold"),
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper'),
+                            list(x = 0.0225, 
+                                 y = 1.075, 
+                                 text = subtitle, 
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper'),
+                            list(x = 1.025, 
+                                 y = -0.125, 
+                                 text = "Source: GSU Data Warehouse", 
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper')))
 
 ```
 
@@ -610,7 +772,8 @@ max_fall_cy <- max(fall_ts_prep$cy, na.rm = TRUE)
 
 fall_ts <- fall_ts_prep %>%
   select(applied) %>%
-  ts()
+  ts(start = min_fy,
+     end = max_fy)
 
 
 
@@ -648,7 +811,7 @@ fiscal year enrollment.
 
 <br>
 
-```{r fig.height = 4, fig.width = 8, fig.align = "center", dpi = 320, cache = TRUE}
+```{r}
 
 # PREPARE AUTO-GENERATED VISUALIZATION ELEMENTS
 
@@ -659,27 +822,6 @@ abb_max_fall <- as.integer(substr(max_fy, 3, 4))
 
 fy_labs <- data.frame(fy = min_fy:(max_fy + 2)) %>%
   mutate(lab = paste0("'", substr(fy, 3, 4)))
-
-
-
-# VISUALIZE AUTO-ARIMA
-
-fit %>% 
-  forecast(h = 2) %>% 
-  autoplot(fcol = "#0039A6") +
-  scale_y_continuous(labels = comma, 
-                     limits = c(0, NA)) +
-  scale_x_continuous(labels = fy_labs$lab,
-                     breaks = 1:(length(fy_labs$fy))) +
-  labs(title = paste0("Predicted FY '", abb_max_fy + 1, 
-                      " & '", abb_max_fy + 2,
-                      " Fall Term Applications, ", college, sep = " "),
-       subtitle = paste("ARIMA Model", sub),
-       x = "Fiscal Year",
-       y = "Applications",
-       caption = "Source: GSU Data Warehouse,\nHyndman & Khandakar (2020)") +
-  theme_minimal() +
-  theme(plot.caption = element_text(lineheight = 1.1))
 
 
 
@@ -708,6 +850,79 @@ pred_table <- bind_cols(pred_fy,
          pl95 = comma(pl95),
          ph95 = comma(ph95)) %>%
   select(fy, term, pfc:ph95)
+
+```
+
+```{r out.width = "100%", out.height = "100%", fig.align = "center", dpi = 320}
+
+# MANIPULATE FORECAST OBJECT INTERNALS
+
+fore <- forecast(object = fit, h = 2)
+
+fore$lower <- round(fore$lower)
+fore$upper <- round(fore$upper)
+
+max_y <- max(c(max(fore$x), max(fore$upper)))
+
+
+
+# VISUALIZE AUTO-ARIMA
+
+title <- paste0("Predicted FY '", abb_max_fy + 1, 
+                " & '", abb_max_fy + 2,
+                " Fall Applications", sep = " ")
+
+subtitle <- paste0("ARIMA Model ", sub, ", ", college)
+
+plot_ly() %>% 
+  add_lines(x = time(fall_ts), 
+            y = fall_ts,
+            color = I("black"), 
+            name = "Observed") %>% 
+  add_lines(x = time(fore$mean), 
+            y = fore$mean, 
+            color = I(alpha("#0039A6", 1)), 
+            name = "Forecasted") %>%
+    add_ribbons(x = time(fore$mean), 
+              ymin = fore$lower[, 1], 
+              ymax = fore$upper[, 1],
+              color = I(alpha("#0071CE", 0.6)), 
+              name = "80% Confidence") %>%
+    add_ribbons(x = time(fore$mean), 
+              ymin = fore$lower[, 2], 
+              ymax = fore$upper[, 2],
+              color = I(alpha("#97CAEB", 0.6)), 
+              name = "95% Confidence") %>%
+  layout(legend = list(orientation = "h",
+                       x = 0, 
+                       y = -0.051775, 
+                       name = "Test",
+                       bgcolor = alpha("#FFFFFF", 0.6)),
+         margin = list(r = 12.5, t = 50, b = 50),
+         yaxis = list(range = c(0, max_y),
+                      tickformat = ","),
+         xaxis = list(range = c(min_fy - 1, 
+                                max_fy + 2)),
+         annotations = list(list(x = 0.0225, 
+                                 y = 1.15, 
+                                 text = title, 
+                                 font = list(size = 20,
+                                             face = "bold"),
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper'),
+                            list(x = 0.0225, 
+                                 y = 1.075, 
+                                 text = subtitle, 
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper'),
+                            list(x = 1.025, 
+                                 y = -0.125, 
+                                 text = "Source: GSU Data Warehouse", 
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper')))
 
 ```
 
@@ -790,7 +1005,8 @@ max_spring_cy <- max(spring_ts_prep$cy, na.rm = TRUE)
 
 spring_ts <- spring_ts_prep %>%
   select(applied) %>%
-  ts()
+  ts(start = min_fy,
+     end = max_fy)
 
 
 
@@ -828,7 +1044,7 @@ fiscal year enrollment.
 
 <br>
 
-```{r fig.height = 4, fig.width = 8, fig.align = "center", dpi = 320, cache = TRUE}
+```{r}
 
 # PREPARE AUTO-GENERATED VISUALIZATION ELEMENTS
 
@@ -839,27 +1055,6 @@ abb_max_spring <- as.integer(substr(max_fy, 3, 4))
 
 fy_labs <- data.frame(fy = min_fy:(max_fy + 2)) %>%
   mutate(lab = paste0("'", substr(fy, 3, 4)))
-
-
-
-# VISUALIZE AUTO-ARIMA
-
-fit %>% 
-  forecast(h = 2) %>% 
-  autoplot(fcol = "#0039A6") +
-  scale_y_continuous(labels = comma, 
-                     limits = c(0, NA)) +
-  scale_x_continuous(labels = fy_labs$lab,
-                     breaks = 1:(length(fy_labs$fy))) +
-  labs(title = paste0("Predicted FY '", abb_max_fy + 1, 
-                      " & '", abb_max_fy + 2,
-                      " Spring Term Applications, ", college, sep = " "),
-       subtitle = paste("ARIMA Model", sub),
-       x = "Fiscal Year",
-       y = "Applications",
-       caption = "Source: GSU Data Warehouse,\nHyndman & Khandakar (2020)") +
-  theme_minimal() +
-  theme(plot.caption = element_text(lineheight = 1.1))
 
 
 
@@ -888,6 +1083,79 @@ pred_table <- bind_cols(pred_fy,
          pl95 = comma(pl95),
          ph95 = comma(ph95)) %>%
   select(fy, term, pfc:ph95)
+
+```
+
+```{r out.width = "100%", out.height = "100%", fig.align = "center", dpi = 320}
+
+# MANIPULATE FORECAST OBJECT INTERNALS
+
+fore <- forecast(object = fit, h = 2)
+
+fore$lower <- round(fore$lower)
+fore$upper <- round(fore$upper)
+
+max_y <- max(c(max(fore$x), max(fore$upper)))
+
+
+
+# VISUALIZE AUTO-ARIMA
+
+title <- paste0("Predicted FY '", abb_max_fy + 1, 
+                " & '", abb_max_fy + 2,
+                " Spring Applications", sep = " ")
+
+subtitle <- paste0("ARIMA Model ", sub, ", ", college)
+
+plot_ly() %>% 
+  add_lines(x = time(spring_ts), 
+            y = spring_ts,
+            color = I("black"), 
+            name = "Observed") %>% 
+  add_lines(x = time(fore$mean), 
+            y = fore$mean, 
+            color = I(alpha("#0039A6", 1)), 
+            name = "Forecasted") %>%
+    add_ribbons(x = time(fore$mean), 
+              ymin = fore$lower[, 1], 
+              ymax = fore$upper[, 1],
+              color = I(alpha("#0071CE", 0.6)), 
+              name = "80% Confidence") %>%
+    add_ribbons(x = time(fore$mean), 
+              ymin = fore$lower[, 2], 
+              ymax = fore$upper[, 2],
+              color = I(alpha("#97CAEB", 0.6)), 
+              name = "95% Confidence") %>%
+  layout(legend = list(orientation = "h",
+                       x = 0, 
+                       y = -0.051775, 
+                       name = "Test",
+                       bgcolor = alpha("#FFFFFF", 0.6)),
+         margin = list(r = 12.5, t = 50, b = 50),
+         yaxis = list(range = c(0, max_y),
+                      tickformat = ","),
+         xaxis = list(range = c(min_fy - 1, 
+                                max_fy + 2)),
+         annotations = list(list(x = 0.0225, 
+                                 y = 1.15, 
+                                 text = title, 
+                                 font = list(size = 20,
+                                             face = "bold"),
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper'),
+                            list(x = 0.0225, 
+                                 y = 1.075, 
+                                 text = subtitle, 
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper'),
+                            list(x = 1.025, 
+                                 y = -0.125, 
+                                 text = "Source: GSU Data Warehouse", 
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper')))
 
 ```
 
@@ -970,7 +1238,8 @@ max_summer_cy <- max(summer_ts_prep$cy, na.rm = TRUE)
 
 summer_ts <- summer_ts_prep %>%
   select(applied) %>%
-  ts()
+  ts(start = min_fy,
+     end = max_fy)
 
 
 
@@ -1008,7 +1277,7 @@ fiscal year enrollment.
 
 <br>
 
-```{r fig.height = 4, fig.width = 8, fig.align = "center", dpi = 320, cache = TRUE}
+```{r}
 
 # PREPARE AUTO-GENERATED VISUALIZATION ELEMENTS
 
@@ -1019,29 +1288,6 @@ abb_max_summer <- as.integer(substr(max_fy, 3, 4))
 
 fy_labs <- data.frame(fy = min_fy:(max_fy + 2)) %>%
   mutate(lab = paste0("'", substr(fy, 3, 4)))
-
-
-
-# VISUALIZE AUTO-ARIMA
-
-fit %>% 
-  forecast(h = 2) %>% 
-  autoplot(fcol = "#0039A6") +
-  scale_y_continuous(labels = comma, 
-                     limits = c(0, NA)) +
-  scale_x_continuous(labels = fy_labs$lab,
-                     breaks = 1:(length(fy_labs$fy))) +
-  labs(title = paste0("Predicted FY '", abb_max_fy + 1, 
-                      " & '", abb_max_fy + 2,
-                      " Summer Term Applications, ", college, sep = " "),
-       subtitle = paste("ARIMA Model", sub),
-       x = "Fiscal Year",
-       y = "Applications",
-       caption = "Source: GSU Data Warehouse,\nHyndman & Khandakar (2020)") +
-  theme_minimal() +
-  theme(plot.caption = element_text(lineheight = 1.1))
-
-
 
 # CREATE PREDICTION TABLES
 
@@ -1068,6 +1314,79 @@ pred_table <- bind_cols(pred_fy,
          pl95 = comma(pl95),
          ph95 = comma(ph95)) %>%
   select(fy, term, pfc:ph95)
+
+```
+
+```{r out.width = "100%", out.height = "100%", fig.align = "center", dpi = 320}
+
+# MANIPULATE FORECAST OBJECT INTERNALS
+
+fore <- forecast(object = fit, h = 2)
+
+fore$lower <- round(fore$lower)
+fore$upper <- round(fore$upper)
+
+max_y <- max(c(max(fore$x), max(fore$upper)))
+
+
+
+# VISUALIZE AUTO-ARIMA
+
+title <- paste0("Predicted FY '", abb_max_fy + 1, 
+                " & '", abb_max_fy + 2,
+                " Summer Applications", sep = " ")
+
+subtitle <- paste0("ARIMA Model ", sub, ", ", college)
+
+plot_ly() %>% 
+  add_lines(x = time(summer_ts), 
+            y = summer_ts,
+            color = I("black"), 
+            name = "Observed") %>% 
+  add_lines(x = time(fore$mean), 
+            y = fore$mean, 
+            color = I(alpha("#0039A6", 1)), 
+            name = "Forecasted") %>%
+    add_ribbons(x = time(fore$mean), 
+              ymin = fore$lower[, 1], 
+              ymax = fore$upper[, 1],
+              color = I(alpha("#0071CE", 0.6)), 
+              name = "80% Confidence") %>%
+    add_ribbons(x = time(fore$mean), 
+              ymin = fore$lower[, 2], 
+              ymax = fore$upper[, 2],
+              color = I(alpha("#97CAEB", 0.6)), 
+              name = "95% Confidence") %>%
+  layout(legend = list(orientation = "h",
+                       x = 0, 
+                       y = -0.051775, 
+                       name = "Test",
+                       bgcolor = alpha("#FFFFFF", 0.6)),
+         margin = list(r = 12.5, t = 50, b = 50),
+         yaxis = list(range = c(0, max_y),
+                      tickformat = ","),
+         xaxis = list(range = c(min_fy - 1, 
+                                max_fy + 2)),
+         annotations = list(list(x = 0.0225, 
+                                 y = 1.15, 
+                                 text = title, 
+                                 font = list(size = 20,
+                                             face = "bold"),
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper'),
+                            list(x = 0.0225, 
+                                 y = 1.075, 
+                                 text = subtitle, 
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper'),
+                            list(x = 1.025, 
+                                 y = -0.125, 
+                                 text = "Source: GSU Data Warehouse", 
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper')))
 
 ```
 
@@ -1119,7 +1438,9 @@ avg_app_terms <- mean(term_ts_prep$applied, na.rm = TRUE)
 
 all_ts <- term_ts_prep %>%
   select(applied) %>%
-  ts()
+  ts(start = min_fy,
+     end = max_fy, 
+     frequency = 3)
 
 
 
@@ -1156,7 +1477,7 @@ for cylicity and seasonality.
 
 <br>
 
-```{r fig.height = 4, fig.width = 8, fig.align = "center", dpi = 320, cache = TRUE}
+```{r}
 
 # PREPARE AUTO-GENERATED VISUALIZATION ELEMENTS
 
@@ -1176,30 +1497,6 @@ pred_labs <- data.frame(fy = c(max(term_labs$fy) + 1, max(term_labs$fy) + 2),
 
 all_labs <- bind_rows(term_labs, pred_labs) %>%
   mutate(fy = paste0("'", substr(fy, 3, 4)))
-
-
-
-# VISUALIZE AUTO-ARIMA
-
-max_y <- max(as.numeric(all_ts), na.rm = TRUE) * 1.15
-
-fit %>% 
-  forecast(h = 6) %>% 
-  autoplot(fcol = "#0039A6") +
-  scale_x_continuous(breaks = all_labs$position, 
-                     labels = all_labs$fy) +
-  scale_y_continuous(labels = comma) +
-  coord_cartesian(ylim = c(0, max_y)) +
-  labs(title = paste0("Predicted FY '", abb_max_fy + 1, 
-                      " & '", abb_max_fy + 2,
-                      " Term with Seasonality & Cyclicity, ", college, sep = " "),
-       subtitle = paste("ARIMA Model", sub),
-       x = "Fiscal Year",
-       y = "Applications",
-       caption = paste0("Truncated at 115% of maximum actual.\nSource: G",
-                        "SU Data Warehouse,\nHyndman & Khandakar (2020)")) +
-  theme_minimal() +
-  theme(plot.caption = element_text(lineheight = 1.1))
 
 
 
@@ -1239,6 +1536,77 @@ pred_table_final <- data.frame(FY = pred_fy,
          "Max. (80%)" = ph80,
          "Min. (95%)" = pl95,
          "Max. (95%)" = ph95)
+
+```
+
+```{r out.width = "100%", out.height = "100%", fig.align = "center", dpi = 320}
+
+# MANIPULATE FORECAST OBJECT INTERNALS
+
+fore <- forecast(object = fit, h = 6)
+
+fore$lower <- round(fore$lower)
+fore$upper <- round(fore$upper)
+
+max_y <- max(fore$x) * 1.15
+
+
+
+# VISUALIZE AUTO-ARIMA
+
+title <- "Predictions with Seasonality & Cyclicity"
+
+subtitle <- paste0("ARIMA Model ", sub, ", ", college)
+
+plot_ly() %>% 
+  add_lines(x = time(all_ts), 
+            y = all_ts,
+            color = I("black"), 
+            name = "Observed") %>% 
+  add_lines(x = time(fore$mean), 
+            y = fore$mean, 
+            color = I(alpha("#0039A6", 1)), 
+            name = "Forecasted") %>%
+    add_ribbons(x = time(fore$mean), 
+              ymin = fore$lower[, 1], 
+              ymax = fore$upper[, 1],
+              color = I(alpha("#0071CE", 0.6)), 
+              name = "80% Confidence") %>%
+    add_ribbons(x = time(fore$mean), 
+              ymin = fore$lower[, 2], 
+              ymax = fore$upper[, 2],
+              color = I(alpha("#97CAEB", 0.6)), 
+              name = "95% Confidence") %>%
+  layout(legend = list(orientation = "h",
+                       x = 0, 
+                       y = -0.051775, 
+                       name = "Test",
+                       bgcolor = alpha("#FFFFFF", 0.6)),
+         margin = list(r = 12.5, t = 50, b = 50),
+         yaxis = list(range = c(0, max_y),
+                      tickformat = ","),
+         xaxis = list(range = c(min_fy - 1, 
+                                max_fy + 2)),
+         annotations = list(list(x = 0.0225, 
+                                 y = 1.15, 
+                                 text = title, 
+                                 font = list(size = 20,
+                                             face = "bold"),
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper'),
+                            list(x = 0.0225, 
+                                 y = 1.075, 
+                                 text = subtitle, 
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper'),
+                            list(x = 1.025, 
+                                 y = -0.125, 
+                                 text = "Source: GSU Data Warehouse", 
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper')))
 
 ```
 
@@ -1293,18 +1661,18 @@ pred_table_final %>%
 
 # New Enrollment Guide
 
-**FY `r max_fy + 1`** enrollment goals for the **`r college`** are calculated 
-via a 3% increase to a rolling average of the two most recent fiscal 
+**FY `r max_fy + 1`** enrollment recommendations for the **`r college`** are 
+calculated via a 3% increase to a rolling average of the two most recent fiscal 
 years with complete data, viz. **FY `r max_fy - 1`** and **FY `r max_fy`**. 
-Moreover, goals use only OIE-reported enrollees, i.e. Masters and Doctoral 
-students.
+Moreover, recommendations use only OIE-reported enrollees, i.e. Masters and 
+Doctoral students.
 
 The following provides:
 
-* Total **`r college`** enrollment goals for **FY `r max_fy + 1`** 
-* Enrollment goals for **`r pred_table_final$Term[1]`**, 
+* Total **`r college`** enrollment recommendations for **FY `r max_fy + 1`** 
+* Enrollment recommendations for **`r pred_table_final$Term[1]`**, 
 **`r pred_table_final$Term[2]`**, and **`r pred_table_final$Term[3]`**
-* Enrollment goals by academic term and program
+* Enrollment recommendations by academic term and program
 
 <br>
 <br>
@@ -1337,12 +1705,12 @@ In **FY `r fy_enrolled_2yr$fy[1]`** and **FY `r fy_enrolled_2yr$fy[2]`**, the
 **`r comma(avg_fy_enr_2yr)`** degree-seeking, graduate-level students over both 
 fiscal years.
 
-Increasing this rolling average by 3% yields a total annual goal of 
+Increasing this rolling average by 3% yields a total annual recommendation of 
 **`r comma(new_fy_enr_goal)`** *new or continuing* enrollees.
 
 <br>
 
-```{r fig.height = 4, fig.width = 8, fig.align = "center", dpi = 320, cache = TRUE}
+```{r out.width = "100%", out.height = "100%", fig.align = "center", dpi = 320}
 
 fy_enr_viz <- fy_enrolled %>%
   select(fy, enrolled) %>%
@@ -1351,23 +1719,64 @@ fy_enr_viz <- fy_enrolled %>%
                        enrolled = c(fy_enrolled$enrolled[nrow(fy_enrolled)], new_fy_enr_goal),
                        status = "Target"))
 
-ggplot(fy_enr_viz, aes(x = fy, y = enrolled, color = status)) +
+viz_tbl <- fy_enr_viz %>%
+  rename(FY = fy,
+         Enrolled = enrolled,
+         Status = status)
+
+title <- paste("Graduate & Degree-Earning Enrollees")
+
+subtitle <- paste0("FY ", max_fy + 1, " Recommended Enrollees: ", 
+                   comma(new_fy_enr_goal), ", ", college)
+
+viz <- ggplot(viz_tbl, aes(x = FY, y = Enrolled, color = Status)) +
   geom_smooth(alpha = 0.1,
               method = "lm", 
               color = "gray90") +
   geom_path(size = 1.05) +
   lims(x = c(min_fy - 1, NA)) +
-  labs(x = "Fiscal Year",
-       y = "Enrollees",
+  labs(x = NULL,
+       y = NULL,
        color = NULL, 
-       title = paste("Graduate & Degree-Earning Enrollees,", college),
-       subtitle = paste("FY", max_fy + 1, "Target Enrollees:", comma(new_fy_enr_goal)),
        caption = "Source: GSU Data Warehouse")+
   scale_y_continuous(labels = comma, 
                      limits = c(0, NA)) +
   scale_color_manual(values = c("#97CAEB",
                                "#0039A6")) + 
   theme_minimal()
+
+ggplotly(viz) %>%
+  layout(legend = list(orientation = "h",
+                       x = 0.04, 
+                       y = -0.051775, 
+                       name = "Test",
+                       bgcolor = alpha("#FFFFFF", 0.6)),
+         margin = list(r = 12.5, t = 50, b = 50),
+         yaxis = list(tickformat = ","),
+         annotations = list(list(x = 0.0225, 
+                                 y = 1.15, 
+                                 text = title, 
+                                 font = list(size = 20,
+                                             face = "bold"),
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper'),
+                            list(x = 0.0225, 
+                                 y = 1.075, 
+                                 text = subtitle, 
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper'),
+                            list(x = 0.92, 
+                                 y = -0.125, 
+                                 text = "Source: GSU Data Warehouse", 
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper')))
+
+```
+
+```{r}
 
 fy_enr_coef <- round(as.numeric(lm(enrolled ~ fy, 
                                    unique(fy_enr_viz[, 1:2]))$coef[2]), 3)
@@ -1468,7 +1877,7 @@ enrollment, respecitvely.
 ### Contribution-Based Guides
 
 Given the two-year rolling average of proportional contributions by both 
-**FY `r max_fy - 1`** and **FY `r max_fy`** terms, recommended enrollment goals 
+**FY `r max_fy - 1`** and **FY `r max_fy`** terms, recommended enrollment 
 for **`r new_fy_prop_goals$term[1]`**, **`r new_fy_prop_goals$term[2]`**, and
 **`r new_fy_prop_goals$term[3]`** at the **`r college`** are 
 **`r new_fy_prop_goals$contribution[1]`**, 
@@ -1478,15 +1887,15 @@ respectively.
 
 <br>
 
-### View Guide by Term
+### View by Term
 
 The following sparklines visualize the **`r college`'s** graduate-level and 
-degree-seeking target enrollees, historical enrollment, and  trendlines by 
+degree-seeking target enrollees, historical enrollment, and trendlines by 
 academic term from **FY `r min_fy`** to **FY `r max_fy`**. 
 
 <br>
 
-```{r fig.height = 4, fig.width = 8, fig.align = "center", dpi = 320, cache = TRUE}
+```{r out.width = "100%", out.height = "100%", fig.align = "center", dpi = 320}
 
 # PROPORTIONAL GOALS BY TERM: VISUALIZATION
 
@@ -1512,24 +1921,65 @@ terms_viz <- bind_rows(new_term_viz,
                        old_terms_viz2) %>%
   select(fy, term_full, season, enrolled, type)
 
-ggplot(terms_viz, aes(x = fy, y = enrolled, color = type)) +
+viz_tbl <- terms_viz %>%
+  rename(FY = fy,
+         Enrolled = enrolled,
+         Type = type)
+
+title <- paste("Contributions by Term,")
+
+subtitle <- paste0("FY ", max_fy + 1, " Recommended Enrollees: ", comma(new_fy_enr_goal), ", ", college)
+
+viz <- ggplot(viz_tbl, aes(x = FY, y = Enrolled, color = Type)) +
     geom_smooth(alpha = 0.1,
               method = "lm", 
               color = "gray90") +
   geom_line(size = 1.05) +
   lims(x = c(min_fy - 1, NA)) +
-  labs(x = "Fiscal Year",
-       y = "Enrollees",
-       color = NULL, 
-       title = paste("Target Enrollees by Term,", college),
-       subtitle = paste("FY", max_fy + 1, "Target Enrollees:", comma(new_fy_enr_goal)),
-       caption = "Source: GSU Data Warehouse") +
-    scale_y_continuous(labels = comma, 
+  labs(x = NULL,
+       y = NULL,
+       color = NULL) +
+  scale_y_continuous(labels = comma, 
                      limits = c(0, NA)) +
   scale_color_manual(values = c("#97CAEB",
                                "#0039A6")) + 
   facet_grid(~season) +
   theme_minimal()
+
+grobly <- ggplotly(viz)
+
+grobly %>%
+  layout(legend = list(orientation = "h",
+                       x = 0.01, 
+                       y = -0.051775, 
+                       name = "Test",
+                       bgcolor = alpha("#FFFFFF", 0.6)),
+         margin = list(t = 75, b = 50),
+         yaxis = list(tickformat = ","),
+         annotations = list(list(x = 0.0225, 
+                                 y = 1.235, 
+                                 text = title, 
+                                 font = list(size = 20,
+                                             face = "bold"),
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper'),
+                            list(x = 0.0225, 
+                                 y = 1.16, 
+                                 text = subtitle, 
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper'),
+                            list(x = 0.99, 
+                                 y = -0.145, 
+                                 text = "Source: GSU Data Warehouse", 
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper')))
+
+```
+
+```{r}
 
 lm_summer <- terms_viz %>% select(-type) %>% filter(season == "Summer") %>% unique()
 lm_fall <- terms_viz %>% select(-type) %>% filter(season == "Fall") %>% unique()
@@ -1554,8 +2004,8 @@ coef_term_spring <- as.character(new_term_viz %>%
 
 <br>
 
-Accounting for **FY `r max_fy + 1`** enrollment goals, the above linear models 
-depict by term: 
+Accounting for **FY `r max_fy + 1`** recommended enrollment, the above linear 
+models depict by term: 
 
 * **`r coef_term_summer`:** A **`r coef_summer_dir`** trend with a coefficient 
 of **`r round(coef_summer, 3)`**.
@@ -1566,10 +2016,10 @@ of **`r round(coef_spring, 3)`**.
 
 <br>
 
-### Read Guide by Term
+### Read by Term
 
-**FY `r max_fy + 1`** graduate-level enrollment goals for the **`r college`** 
-are organized as follows:
+Recommended **FY `r max_fy + 1`** graduate-level enrollment for the 
+**`r college`** are organized as follows:
 
 <br>
 
@@ -1672,8 +2122,8 @@ calculates and provides recommended enrollment by both program and semester for
 The two-year rolling average contribution of 
 **`r percent(new_term_goals$avg_enr_prc[1])`** for **`r new_term_goals$term[1]`** 
 of programs in **FY `r max_fy + 1`**, increased by 3%, result in the following 
-recommended program enrollment goal(s) among 
-**`r comma(new_term_goals$contribution[1])`** graduate-level students.
+recommended program enrollment of **`r comma(new_term_goals$contribution[1])`** 
+graduate-level students.
 
 <br>
 
@@ -1733,44 +2183,32 @@ n_programs <- nrow(programs_viz)
 
 plot_size <- NA
 
-if (n_programs >= 8){
-  
-  plot_size <- 4
-  
-} else if (n_programs >= 6 & n_programs < 8){
-  
-  plot_size <- 3.5
-  
-} else if (n_programs >= 4 & n_programs < 6){
-  
-  plot_size <- 3
-  
-} else if (n_programs >= 2 & n_programs < 4){
-  
-  plot_size <- 2.5
-  
-} else if (n_programs == 1){
-  
-  plot_size <- 2
-  
-}
+plot_size <- ifelse(n_programs >= 10, 450, 
+                    ifelse(n_programs == 2, 150, 
+                           ifelse(n_programs == 1, 100,
+                                  n_programs * 50)))
 
 ```
 
-```{r fig.height = plot_size, fig.width = 8, fig.align = "center", dpi = 320, cache = TRUE}
+```{r out.width = "100%", out.height = "100%", fig.align = "center", dpi = 320}
 
-ggplot(programs_viz, aes(x = reorder(program, new_fy_contribution), y = round(new_fy_contribution))) +
+programs_viz <- programs_viz %>%
+  rename(Program = program,
+         Contribution = new_fy_contribution) %>%
+  mutate(Contribution = round(Contribution),
+         Program = reorder(Program, Contribution))
+
+viz <- ggplot(programs_viz, aes(x = Program, y = Contribution)) +
   geom_bar(stat = "identity",
            fill = "#0071CE",
            alpha = 0.6) +
   scale_y_continuous(label = comma) + 
   labs(x = NULL,
-       y = "Target Enrollees",
-       title = paste0(top_lab, ", ", college),
-       subtitle = paste(programs_viz$term[1], "Term;", comma(n_new_students), "Target Enrollees"),
-       caption = "Source: GSU Data Warehouse") +
+       y = "Recommended Enrollees") +
   coord_flip() +
   theme_minimal()
+
+ggplotly(viz) %>% layout(height = plot_size)
 
 ```
 
@@ -1796,7 +2234,7 @@ program_goals_filt_tbl %>%
 The two-year rolling average contribution of 
 **`r percent(new_term_goals$avg_enr_prc[2])`** for **`r new_term_goals$term[2]`** 
 of programs in **FY `r max_fy + 1`**, increased by 3%, result in the following 
-recommended program enrollment goal(s) among 
+recommended program enrollment among 
 **`r comma(new_term_goals$contribution[2])`** graduate-level students.
 
 <br>
@@ -1857,44 +2295,32 @@ n_programs <- nrow(programs_viz)
 
 plot_size <- NA
 
-if (n_programs >= 8){
-  
-  plot_size <- 4
-  
-} else if (n_programs >= 6 & n_programs < 8){
-  
-  plot_size <- 3.5
-  
-} else if (n_programs >= 4 & n_programs < 6){
-  
-  plot_size <- 3
-  
-} else if (n_programs >= 2 & n_programs < 4){
-  
-  plot_size <- 2.5
-  
-} else if (n_programs == 1){
-  
-  plot_size <- 2
-  
-}
+plot_size <- ifelse(n_programs >= 10, 450, 
+                    ifelse(n_programs == 2, 150, 
+                           ifelse(n_programs == 1, 100,
+                                  n_programs * 50)))
 
 ```
 
-```{r fig.height = plot_size, fig.width = 8, fig.align = "center", dpi = 320, cache = TRUE}
+```{r out.width = "100%", out.height = "100%", fig.align = "center", dpi = 320}
 
-ggplot(programs_viz, aes(x = reorder(program, new_fy_contribution), y = round(new_fy_contribution))) +
+programs_viz <- programs_viz %>%
+  rename(Program = program,
+         Contribution = new_fy_contribution) %>%
+  mutate(Contribution = round(Contribution),
+         Program = reorder(Program, Contribution))
+
+viz <- ggplot(programs_viz, aes(x = Program, y = Contribution)) +
   geom_bar(stat = "identity",
            fill = "#0071CE",
            alpha = 0.6) +
   scale_y_continuous(label = comma) + 
   labs(x = NULL,
-       y = "Target Enrollees",
-       title = paste0(top_lab, ", ", college),
-       subtitle = paste(programs_viz$term[1], "Term;", comma(n_new_students), "Target Enrollees"),
-       caption = "Source: GSU Data Warehouse") +
+       y = "Recommended Enrollees") +
   coord_flip() +
   theme_minimal()
+
+ggplotly(viz) %>% layout(height = plot_size)
 
 ```
 
@@ -1920,7 +2346,7 @@ program_goals_filt_tbl %>%
 The two-year rolling average contribution of 
 **`r percent(new_term_goals$avg_enr_prc[3])`** for **`r new_term_goals$term[3]`** 
 of programs in **FY `r max_fy + 1`**, increased by 3%, result in the following 
-recommended program enrollment goal(s) among 
+recommended program enrollment among 
 **`r comma(new_term_goals$contribution[3])`** graduate-level students.
 
 <br>
@@ -1981,44 +2407,32 @@ n_programs <- nrow(programs_viz)
 
 plot_size <- NA
 
-if (n_programs >= 8){
-  
-  plot_size <- 4
-  
-} else if (n_programs >= 6 & n_programs < 8){
-  
-  plot_size <- 3.5
-  
-} else if (n_programs >= 4 & n_programs < 6){
-  
-  plot_size <- 3
-  
-} else if (n_programs >= 2 & n_programs < 4){
-  
-  plot_size <- 2.5
-  
-} else if (n_programs == 1){
-  
-  plot_size <- 2
-  
-}
+plot_size <- ifelse(n_programs >= 10, 450, 
+                    ifelse(n_programs == 2, 150, 
+                           ifelse(n_programs == 1, 100,
+                                  n_programs * 50)))
 
 ```
 
-```{r fig.height = plot_size, fig.width = 8, fig.align = "center", dpi = 320, cache = TRUE}
+```{r out.width = "100%", out.height = "100%", fig.align = "center", dpi = 320}
 
-ggplot(programs_viz, aes(x = reorder(program, new_fy_contribution), y = round(new_fy_contribution))) +
+programs_viz <- programs_viz %>%
+  rename(Program = program,
+         Contribution = new_fy_contribution) %>%
+  mutate(Contribution = round(Contribution),
+         Program = reorder(Program, Contribution))
+
+viz <- ggplot(programs_viz, aes(x = Program, y = Contribution)) +
   geom_bar(stat = "identity",
            fill = "#0071CE",
            alpha = 0.6) +
   scale_y_continuous(label = comma) + 
   labs(x = NULL,
-       y = "Target Enrollees",
-       title = paste0(top_lab, ", ", college),
-       subtitle = paste(programs_viz$term[1], "Term;", comma(n_new_students), "Target Enrollees"),
-       caption = "Source: GSU Data Warehouse") +
+       y = "Recommended Enrollees") +
   coord_flip() +
   theme_minimal()
+
+ggplotly(viz) %>% layout(height = plot_size)
 
 ```
 
