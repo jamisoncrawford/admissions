@@ -12,7 +12,7 @@ This repository contains all documentation necessary to reproduce, in its entire
 
 ## Data Sources
 
-All adata are queried from the GSU Data Warehouse and require special permissions for access. Qhile the majority of preprocessing and manipulation and performed in `R`, queries using Oracle SQL Developer pull data using the following scripts.
+All adata are queried from the GSU Data Warehouse and require special permissions for access. Qhile the majority of preprocessing and manipulation and performed in `R`, queries using Oracle SQL Developer pull data using the following:
 
 **All Applications & Main Student Table:** Database `EDWPRD`:
 
@@ -34,3 +34,44 @@ JOIN edwprd.sdstumain m
 SELECT *
 FROM stvdegc;
 ```
+
+## Tooling & Extensions
+
+Preprocessing, modeling, and report-building use the following `R` extensions (i.e. packages):
+
+```
+library(zoo)
+library(readr)
+library(dplyr)
+library(tidyr)
+library(scales)
+library(GGally)
+library(pander)
+library(panthr)
+library(ggplot2)
+library(stringr)
+library(forecast)
+library(lubridate)
+library(kableExtra)
+```
+
+## Package panthr
+
+Notably, I've used my own package, package `panthr`, which must be installed using package `devtools`. Package `panthr` is a domain-specific extension specific to GSU Warehouse data and designed to streamline common preprocessing tasks, such as decoding majors, degrees, and ethnorace per OIE (Office of Institutional Effectiveness) reporting standards, as well as converting terms to academic, calendar, and fiscal years, discretizing GPAs, etc. You can read more about `panthr` in [**this GitHub repository**](https://github.com/jamisoncrawford/panthr). 
+
+Run the following in `R` to install and load package `panthr` into your environment:
+
+```
+if(!require(devtools)){install.packages("devtools")}
+library(devtools)
+
+install_github(repo = "jamisoncrawford/panthr")
+library(panthr)
+```
+
+# Contributors
+
+
+
+```
+
