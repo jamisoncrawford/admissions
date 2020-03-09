@@ -1,6 +1,6 @@
 # The Graduate School's Admissions Reports
 
-The *Admissions Reports* are provided by [**The Graduate School**](https://graduate.gsu.edu/) at Goergia State University in order to inform college and school leadership on the historical data, recent trends, forecasted applications, and recommended term and program enrollees for upcoming fiscal years. 
+The *Admissions Reports* are provided by [**The Graduate School**](https://graduate.gsu.edu/) at Georgia State University in order to inform college and school leadership on the historical data, recent trends, forecasted applications, and recommended term and program enrollees for upcoming fiscal years. 
 
 ## Documentation
 
@@ -71,7 +71,6 @@ library(panthr)
 
 # Contributors
 
+[**Jamison Crawford**](https://www.linkedin.com/in/jamisoncrawford/) is an Institutional Research Associate for The Graduate School at Georgia State University and a Faculty Associate at Arizona State University, where he teaches *Foundations of Data Science* in the MS-PEDA (Program Evaluation & Data Analytics) at the Watts College.
 
-
-```
-
+Lita Malveaux is the Director of Graduate Admissions at Georgia State University and contributed significantly towards deciphering admissions data, as well as conceptualizing this project and many of its most important features.
