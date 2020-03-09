@@ -198,11 +198,11 @@ all_fy_viz <- all_fy_viz %>%
                                     "Accepted",
                                     "Enrolled"))) %>%
          rename("FY" = fy,
-                "Enrollees" = count,
+                "Applicants" = count,
                 "Status" = status)
 
 viz <- ggplot(all_fy_viz, aes(x = FY, 
-                       y = Enrollees, 
+                       y = Applicants, 
                        fill = Status)) +
   geom_area(alpha = 0.6) +
   lims(x = c(min_fy - 1, NA)) +
