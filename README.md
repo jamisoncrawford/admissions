@@ -9,6 +9,7 @@ This repository contains all documentation necessary to reproduce, in its entire
 * [**Querying & Preprocessing**](https://github.com/jamisoncrawford/admissions/blob/master/2020-02-25_admissions_sql-pull_preprocessing.r)
 * [**Static Report Building**](https://github.com/jamisoncrawford/admissions/blob/master/2020-02-27_admissions-report-card_template.rmd)
 * [**Interactive Report Building**](https://github.com/jamisoncrawford/admissions/blob/master/2020-02-27_admissions-report-card_template.rmd)
+* [**Interactive Sample Report Building**](https://github.com/jamisoncrawford/admissions/blob/master/2020-02-27_admissions-report-card_template-interactive-sample.rmd)
 
 ## Data Sources
 
