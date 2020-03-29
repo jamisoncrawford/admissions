@@ -69,8 +69,10 @@ install_github(repo = "jamisoncrawford/panthr")
 library(panthr)
 ```
 
-# Contributors
+# Report Author
 
 [**Jamison Crawford**](https://www.linkedin.com/in/jamisoncrawford/) is an Institutional Research Associate for The Graduate School at Georgia State University and a Faculty Associate at Arizona State University, where he teaches *Foundations of Data Science* for the MS-PEDA (Program Evaluation & Data Analytics) at the Watts College ([**Email**](mailto:jcrawford52@gsu.edu)).
+
+# Contributors
 
 **Lita Malveaux** is the Director of Graduate Admissions at Georgia State University and contributed significantly towards deciphering admissions data, as well as conceptualizing this project and many of its most important features.
