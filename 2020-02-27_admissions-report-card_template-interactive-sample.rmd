@@ -1,0 +1,2697 @@
+---
+title: "Admissions Report (Sample Work Product)"
+author: "J. Crawford, Institutional Researcher"
+date: "`r format(Sys.time(), '%d %B %Y')`, Version 1.0"
+output:
+  html_document:
+    theme: readable
+    df_print: paged
+    highlight: tango
+    toc: yes
+    toc_float: yes
+---
+
+```{r include = FALSE, cache = FALSE}
+
+# SELECT COLLEGE: ASSIGN THE CORRESPONDING NUMBER TO 'COLLEGE'
+
+    # (1) A. Young School Policy Studies 
+    # (2) Col of Nursing & Health Prof.  
+    # (3) College of Arts & Sciences     
+    # (4) Education & Human Development 
+    # (5) Robinson College of Business   
+    # (6) School of Public Health        
+    # (7) University Wide                
+    # (8) College of the Arts 
+    # (9) Inst. for Biomedical Sciences
+
+selection <- 1
+
+
+
+# SET GLOBAL KNITR OPTIONS
+
+knitr::opts_chunk$set(echo = FALSE, 
+                      message = FALSE, 
+                      warning = FALSE, 
+                      fig.width = 10, 
+                      fig.height = 8)
+
+
+
+# SET WORKING DIRECTORY & LOAD PACKAGES
+
+setwd("~/R Portfolio/Admission Report")
+
+library(zoo)
+library(readr)
+library(dplyr)
+library(tidyr)
+library(shiny)
+library(plotly)
+library(scales)
+library(GGally)
+library(pander)
+library(ggplot2)
+library(stringr)
+library(forecast)
+library(lubridate)
+library(kableExtra)
+
+
+
+# LOAD RDATA FILES
+
+all <- readRDS("app-data-scrambled.RDATA")
+
+
+
+# ASSIGN FULL COLLEGE NAME & FILTER DATASET
+
+index <- unique(all$college)[selection]             # Assign selection to index
+
+all <- all %>%
+  filter(college == index)                          # Apply filter
+
+college <- index                                    # Assign college
+
+rm(index, selection)                                # Remove objects
+
+
+
+# REMOVE 2005 DATA
+
+all <- all %>%
+  filter(fy != 2005)
+
+```
+
+<br>
+<br>
+
+# About This Sample
+
+This sample work product is a dynamic R Markdown report designed to provide an 
+overview of historical admissions data for each college at 
+[**Georgia State University**](https://www.gsu.edu/), as well as predicted 
+applications and recommended enrollment rates over the next two fiscal years. 
+
+<br>
+<br>
+
+## Documentation & Data
+
+Reproducible documentation for this work is available in this 
+[**GitHub repository**](https://github.com/jamisoncrawford/admissions).
+
+**Note:** *All data have been randomly transformed using the original admissions 
+data in order to obfuscate protected GSU data while allowing sensible trends in 
+seasonality and cyclicity that reasonably resemble actual admissions data.*
+
+<br>
+<br>
+
+## Dynamic Reporting
+
+This report is programmed in R, Markdown, HTML, and CSS to provide a flexible 
+template that reacts and updates dynamically when introduced to new data or 
+filtered to show different colleges. All characters in **boldface** indicate 
+reactive variables which change in accordance with the properties of the data.
+
+<br>
+
+<center>
+
+![](dynamic-gif.gif)
+
+</center>
+
+<br>
+
+See the reproducible documentation provided in the above hyperlink to view the 
+underlying code.
+
+<br>
+<br>
+
+## Interactive Graphics
+
+While all tables were compiled with HTML and offer some interactivity, each data 
+visualization was created using R package `ggplot2` and JavaScript library 
+`plotly`, allowing both the visual advantage of the big picture and the rich 
+granularity of traditional tabular data.
+
+<br>
+
+<center>
+
+![](interactivity-gif.gif)
+
+</center>
+
+<br>
+<br>
+
+# `r college`
+
+The following contains an overview of key graduate admissions performance 
+indicators and objectives for the **`r college`** provided by 
+[**The Graduate School**](https://graduate.gsu.edu/) at Georgia State University.
+
+Represented are graduate students designated by the University System of 
+Georgia's Student Information Reporting System (SIRS) as pursuing a Master's, 
+Education Specialist, or Doctorate degree ([**USG, 2006**](https://www.usg.edu/assets/research/documents/sirs/sirs_ded_fall2006.pdf)), 
+though the initial overview includes comparisons with students pursuing 
+graduate-level certificates.
+
+<br>
+<br>
+
+## Admissions Over Time
+
+```{r cache = TRUE}
+
+min_fy <- min(all$fy, na.rm = TRUE)                         # Minimum FY
+max_fy <- max(all$fy, na.rm = TRUE)                         # Maximum FY
+
+all_fy <- all %>%
+  group_by(fy) %>%
+  summarize(applied = sum(applied, na.rm = TRUE),
+            accepted = sum(accepted, na.rm = TRUE),
+            enr_con = sum(enr_con, na.rm = TRUE),
+            enr_new = sum(enr_new, na.rm = TRUE),
+            enrolled = sum(enrolled, na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(yield = enrolled / accepted)                       # Grouped by FY
+
+avg_all_app <- mean(all_fy$applied, na.rm = TRUE)           # Mean total apps
+avg_all_acc <- mean(all_fy$accepted, na.rm = TRUE)          # Mean total accepts
+avg_all_enr <- mean(all_fy$enrolled, na.rm = TRUE)          # Mean total enroll
+avg_all_yld <- mean(all_fy$yield, na.rm = TRUE)             # Mean yield rate
+
+rec_all_app <- all_fy$applied[length(all_fy$applied)]       # Most recent apps
+rec_all_acc <- all_fy$accepted[length(all_fy$accepted)]     # Most recent accepts
+rec_all_enr <- all_fy$enrolled[length(all_fy$enrolled)]     # Most recent enrolls
+rec_all_yld <- all_fy$yield[length(all_fy$yield)]           # Most recent yield
+
+new_fy <- all %>%
+  group_by(fy) %>%
+  summarize(accepted = sum(accepted, na.rm = TRUE),
+            enr_con = sum(enr_con, na.rm = TRUE),
+            enr_new = sum(enr_new, na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(new_yld = enr_new / accepted)                      # Grouped by FY
+
+avg_new_enr <- mean(new_fy$enr_new, na.rm = TRUE)           # Mean total enroll
+avg_new_yld <- mean(new_fy$new_yld, na.rm = TRUE)           # Mean yield rate
+
+all_fy_viz <- all_fy %>%
+  select(-enr_con, -enr_new, -yield) %>%
+  mutate(applied = applied - (accepted + enrolled),
+         accepted = accepted - enrolled) %>%
+  gather(key = status, value = count, applied:enrolled)     # Viz prep for all by FY
+
+new_fy_viz <- all_fy %>%
+  select(-accepted, -applied, -enrolled, -yield) %>%
+  gather(key = status, value = count, enr_con:enr_new)      # Viz prep for new by FY
+
+nmd_fy_tbl <- all %>%
+  filter(level == "Degree") %>%
+  rename(New = enr_new,
+         Continuing = enr_con) %>%
+  group_by(fy,level) %>%
+  summarize(New = sum(New, na.rm = TRUE),
+            Continuing = sum(Continuing, na.rm = TRUE),
+            Total = sum(New, Continuing, na.rm = TRUE)) %>%
+  ungroup()                                                  # Tbl prep for M&D by FY
+
+nmd_fy_viz <- all %>%
+  filter(level == "Degree") %>%
+  rename(New = enr_new,
+         Continuing = enr_con) %>%
+  group_by(fy,level) %>%
+  summarize(New = sum(New, na.rm = TRUE),
+            Continuing = sum(Continuing, na.rm = TRUE)) %>%
+  ungroup() %>%
+  gather(key = status, value = count, New:Continuing)       # Viz prep for M&D by FY
+
+```
+
+Betweem **FY `r min_fy`** and **FY `r max_fy`**, the **`r college`** has, on 
+average, received **`r comma(avg_all_app)`** applications, enrolled or 
+maintained **`r comma(avg_all_enr)`** graduate students, and maintained a yield 
+rate of **`r percent(avg_all_yld)`** each year.
+
+<br>
+
+```{r out.width = "100%", out.height = "100%", fig.align = "center", dpi = 320}
+
+# VISUALIZATION: ALL ENROLLMENT OVER TIME
+
+all_fy_viz <- all_fy_viz %>%
+  mutate(status = factor(status, 
+                         levels = c("applied", 
+                                    "accepted",
+                                    "enrolled"), 
+                         labels = c("Applied",
+                                    "Accepted",
+                                    "Enrolled"))) %>%
+         rename("FY" = fy,
+                "Applicants" = count,
+                "Status" = status)
+
+viz <- ggplot(all_fy_viz, aes(x = FY, 
+                       y = Applicants, 
+                       fill = Status)) +
+  geom_area(alpha = 0.6) +
+  lims(x = c(min_fy - 1, NA)) +
+  labs(fill = "Category",
+       x = NULL,
+       y = "Applicants") +
+  scale_y_continuous(labels = comma) +
+  theme_minimal() +
+  scale_fill_manual(values = c("#97CAEB",
+                               "#0071CE",
+                               "#0039A6"))
+
+title <- "Admissions by Decision"
+
+subtitle <- paste0(college, ", Fiscal Years ", min_fy, " - ", max_fy)
+
+ggplotly(viz) %>%
+  layout(legend = list(orientation = "h",
+                       x = 0.04, 
+                       y = -0.0575, 
+                       name = "Test",
+                       bgcolor = alpha("#FFFFFF", 0.6)),
+         margin = list(t = 50, b = 50),
+         yaxis = list(tickformat = ","),
+         annotations = list(list(x = 0.0225, 
+                                 y = 1.15, 
+                                 text = title, 
+                                 font = list(size = 20,
+                                             face = "bold"),
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper'),
+                            list(x = 0.0225, 
+                                 y = 1.075, 
+                                 text = subtitle, 
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper'),
+                            list(x = 0.976, 
+                                 y = -0.125, 
+                                 text = "Source: GSU Data Warehouse", 
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper')))
+
+```
+
+<br>
+<br>
+
+## Enrollment Over Time
+
+```{r cache = TRUE}
+
+# LINEAR MODEL COEFFICIENTS: NEW V. CONTINUING STUDENTS
+
+nlm <- new_fy_viz %>% filter(status == "enr_new") %>% select(fy, count)
+clm <- new_fy_viz %>% filter(status == "enr_con") %>% select(fy, count)
+
+nlm <- round(as.numeric(lm(count ~ fy, nlm)$coef[2]), 3)
+clm <- round(as.numeric(lm(count ~ fy, clm)$coef[2]), 3)    # Extract linear coefficients
+
+nlm_dir <- ifelse(nlm > 0, "positive", "negative")
+clm_dir <- ifelse(clm > 0, "positive", "negative")          # Determine coef direction
+
+
+
+# ADDITIONAL DESCRIPTIVES
+
+new_fy_cmp <- new_fy_viz %>%
+  spread(status, count) %>%
+  mutate(enr_tot = enr_new + enr_con,
+         enr_new_prc = enr_new / enr_tot,
+         enr_con_prc = enr_con / enr_tot)                   # Spread vars
+
+avg_new_prc <- mean(new_fy_cmp$enr_new_prc, na.rm = TRUE)
+avg_con_prc <- mean(new_fy_cmp$enr_con_prc, na.rm = TRUE)   # Mean % new/cont.
+
+now_fy <- as.numeric(new_fy_cmp[nrow(new_fy_cmp), "fy"])
+now_enr_new <- as.numeric(new_fy_cmp[nrow(new_fy_cmp), "enr_new"])
+now_enr_con <- as.numeric(new_fy_cmp[nrow(new_fy_cmp), "enr_con"])
+now_new_prc <- as.numeric(new_fy_cmp[nrow(new_fy_cmp), "enr_new_prc"])
+now_con_prc <- as.numeric(new_fy_cmp[nrow(new_fy_cmp), "enr_con_prc"])
+
+```
+
+Between **FY `r min_fy`** and **FY `r max_fy`**, the **`r college`** has, on 
+average, enrolled **`r comma(avg_new_enr)`** new graduate students, comprising a 
+new student yield rate of **`r percent(avg_new_yld)`** each year. In 
+**FY `r now_fy`**, **`r comma(now_enr_con)`** graduate students continued 
+studies (**`r percent(now_con_prc)`**) and **`r comma(now_enr_new)`** new 
+students enrolled (**`r percent(now_new_prc)`**).
+
+<br>
+
+```{r out.width = "100%", out.height = "100%", fig.align = "center", dpi = 320}
+
+# VISUALIZATION: NEW V. CONTINUING ENROLLMENT
+
+new_fy_viz <- new_fy_viz %>%
+  rename(FY = fy,
+         Enrollees = count) %>%
+  mutate(Status = factor(status, 
+                         levels = c("enr_new", 
+                                    "enr_con"),
+                         labels = c("New",
+                                    "Continuing")))
+
+viz <- ggplot(new_fy_viz, aes(x = FY, 
+                       y = Enrollees)) +
+  geom_smooth(method = "lm",
+              alpha = 0.1,
+              color = alpha("#0039A6", 0.25)) +
+  geom_path(size = 1.05) +
+  lims(x = c(min_fy - 1, NA)) +
+  labs(fill = "Category",
+       x = NULL,
+       y = NULL) +
+  scale_y_continuous(labels = comma) +
+  theme_minimal() +
+  facet_wrap(~Status)
+
+title <- "Newly Enrolled v. Continuing"
+
+subtitle <- paste0(college, ", Fiscal Years ", min_fy, " - ", max_fy)
+
+grobly <- ggplotly(viz)
+
+grobly %>%
+  layout(margin = list(t = 75, b = 50),
+         yaxis = list(tickformat = ","),
+         annotations = list(list(x = 0.0225, 
+                                 y = 1.235, 
+                                 text = title, 
+                                 font = list(size = 20,
+                                             face = "bold"),
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper'),
+                            list(x = 0.0225, 
+                                 y = 1.16, 
+                                 text = subtitle, 
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper'),
+                            list(x = 1, 
+                                 y = -0.145, 
+                                 text = "Source: GSU Data Warehouse", 
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper')))
+
+```
+
+<br>
+
+Among newly enrolled graduate students, there is a **`r nlm_dir`** trend with a 
+linear model coefficient of **`r nlm`**, while continuing graduate students, 
+shows a **`r clm_dir`** trend with a linear model coefficient of **`r clm`**.
+
+<br>
+<br>
+
+## New Enrollment Over Time
+
+Official graduate-level enrollment as defined by the Office of Institutional 
+Effectiveness ([**OIE**](https://oie.gsu.edu/)) includes solely Masters and 
+Doctoral degree-seeking students and excludes certificate-seekers, non-degree 
+students in graduate-level courses, and transient students. *Notably, unlike* 
+*OIE-defined enrollment, the following excludes cross-registered students.*
+
+The following summary enrollment data at the **`r college`** are reported to the 
+Integrated Postsecondary Education Data System 
+([**IPEDS**](https://nces.ed.gov/ipeds/use-the-data/survey-components)) each 
+academic term.
+
+<br>
+<br>
+
+
+### View New Enrollment
+
+```{r cache = TRUE}
+
+nmd_tot_avg <- mean(nmd_fy_tbl$Total, na.rm = TRUE)
+nmd_new_avg <- mean(nmd_fy_tbl$New, na.rm = TRUE)
+nmd_con_avg <- mean(nmd_fy_tbl$Continuing, na.rm = TRUE)    # Mean new, cont, over time
+
+nmd_new_avg_prc <- mean(nmd_fy_tbl$New / 
+                        nmd_fy_tbl$Total, 
+                        na.rm = TRUE)
+nmd_con_avg_prc <- mean(nmd_fy_tbl$Continuing / 
+                        nmd_fy_tbl$Total, 
+                        na.rm = TRUE)                       # Mean proportions over time
+
+nmd_tot_rec <- nmd_fy_tbl$Total[length(nmd_fy_tbl$Total)]
+nmd_new_rec <- nmd_fy_tbl$New[length(nmd_fy_tbl$New)]
+nmd_con_rec <- nmd_fy_tbl$Continuing[length(nmd_fy_tbl$Continuing)]
+
+                                                            # Most recent new, cont, total
+
+nmd_new_rec_prc <- nmd_fy_tbl$New[length(nmd_fy_tbl$Total)] / 
+                   nmd_fy_tbl$Total[length(nmd_fy_tbl$Total)]
+nmd_con_rec_prc <- nmd_fy_tbl$Continuing[length(nmd_fy_tbl$Total)] / 
+                   nmd_fy_tbl$Total[length(nmd_fy_tbl$Total)]
+
+                                                            # Most recent proportions
+
+```
+
+From **FY `r min_fy`** to **FY `r max_fy`**, reported annual graduate-level 
+enrollment at the **`r college`** averaged **`r comma(nmd_tot_avg)`** enrollees, 
+comprised of **`r comma(nmd_new_avg)`** new students 
+(**`r percent(nmd_new_avg_prc)`**) and **`r comma(nmd_con_avg)`** continuing 
+students (**`r percent(nmd_con_avg_prc)`**). 
+
+<br>
+
+```{r out.width = "100%", out.height = "100%", fig.align = "center", dpi = 320}
+
+nmd_fy_viz <- nmd_fy_viz %>%
+  rename(FY = fy,
+         Enrollees = count) %>%
+  mutate(Status = factor(x = status, 
+                         levels = c("Continuing", 
+                                    "New"),
+                         ordered = TRUE))
+
+viz <- ggplot(nmd_fy_viz, aes(x = FY, 
+                       y = Enrollees,
+                       fill = Status, 
+                    ordered = TRUE)) +
+  geom_area(alpha = 0.5) +
+  lims(x = c(min_fy - 1, NA)) +
+  labs(fill = "Category",
+       x = NULL,
+       y = "Enrollees") +
+  scale_y_continuous(labels = comma) +
+  theme_minimal() +
+  scale_fill_manual(values = c("#97CAEB",
+                               "#0071CE",
+                               "#0039A6"))
+
+title <- "OIE-Defined Enrollment"
+
+subtitle <- paste0(college, ", Fiscal Years ", min_fy, " - ", max_fy)
+
+ggplotly(viz) %>%
+  layout(legend = list(orientation = "h",
+                       x = 0.04, 
+                       y = -0.051775, 
+                       name = "Test",
+                       bgcolor = alpha("#FFFFFF", 0.6)),
+         margin = list(t = 55, b = 50),
+         yaxis = list(tickformat = ","),
+         annotations = list(list(x = 0.0225, 
+                                 y = 1.175, 
+                                 text = title, 
+                                 font = list(size = 20,
+                                             face = "bold"),
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper'),
+                            list(x = 0.0225, 
+                                 y = 1.1, 
+                                 text = subtitle, 
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper'),
+                            list(x = 0.976, 
+                                 y = -0.125, 
+                                 text = "Source: GSU Data Warehouse", 
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper')))
+
+```
+
+<br>
+<br>
+
+### Read New Enrollment
+
+In **FY `r max_fy`**, the **`r college`** had a total graduate-level annual 
+enrollment of **`r comma(nmd_tot_rec)`** graduate students, comprised of 
+**`r comma(nmd_new_rec)`** new students (**`r percent(nmd_new_rec_prc)`**) and 
+**`r comma(nmd_con_rec)`** continuing students (**`r percent(nmd_con_rec_prc)`**). 
+
+<br>
+
+```{r cache = TRUE}
+
+nmd_fy_tbl %>%
+  select(-level) %>%
+  rename("Fiscal Year" = fy) %>%
+  mutate("New (%)" = percent(New / Total),
+         "Continuing (%)" = percent(Continuing / Total),
+         New = comma(New),
+         Continuing = comma(Continuing),
+         Total = comma(Total)) %>%
+  select(`Fiscal Year`, New, `New (%)`, Continuing, `Continuing (%)`, Total) %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+
+```
+
+<br>
+<br>
+
+# Application Forecasts
+
+Between **FY `r min_fy`** and **FY `r max_fy`**, graduate-level programs in the 
+**`r college`** averaged **`r comma(avg_all_app)`** submissions each year. The 
+average enrollment of both new and continuing students averaged 
+**`r comma(avg_all_enr)`** enrollees annually. The average *yield rate*, or the 
+proportion of enrolled students to accepted applicants, averaged 
+**`r percent(avg_all_yld)`** annually.
+
+As annual acceptances and (to some extent) yield rates are determined by **`r college`** 
+admissions teams, the following forecasts total applications for 
+**FY `r max_fy + 1`** and **FY `r max_fy + 2`** using autogenerated 
+Autoregressive Integrated Moving Average (ARIMA) forecasting 
+([**Hyndman & Khandakar, 2008**](https://www.jstatsoft.org/article/view/v027i03)).
+
+Additional ARIMA model accuracy indicators are available in the appendix.
+
+<br>
+<br>
+
+## FY `r max_fy + 1` Forecasts
+
+```{r cache = TRUE}
+
+# PREPARE TIMESERIES OBJECT
+
+fy_ts_prep <- all %>%
+  group_by(fy, term_full) %>%
+  summarize(applied = sum(applied, na.rm = TRUE)) %>%
+  ungroup() %>%
+  group_by(fy) %>%
+  summarize(n = n(),
+            applied = sum(applied, na.rm = TRUE)) %>%
+  ungroup() %>%
+  filter(n == 3) 
+
+fy_ts <- fy_ts_prep %>%
+  select(applied) %>%
+  ts(start = min_fy,
+     end = max_fy)
+
+
+
+# FIT MODEL
+
+fit <- auto.arima(fy_ts, 
+                  lambda = 0,
+                  stepwise = FALSE, 
+                  approximation = FALSE)
+
+```
+
+```{r include = FALSE, cache = TRUE}
+
+# CHECK RESIDUALS & ASSIGN P-VALUE
+
+res <- checkresiduals(fit)
+
+pval <- round(res$p.value, 3)
+
+pval_interp <- ifelse(pval > 0.1, "no uncaptured information", "potentially uncaptured information")
+
+```
+
+In **FY `r max_fy`**, the **`r college`** received **`r comma(rec_all_app)`** 
+applications for graduate-level programs, with **`r comma(rec_all_acc)`** 
+accepted applicants, **`r comma(rec_all_enr)`** new or continuing enrollees, 
+and a college-wide yield rate of **`r percent(rec_all_yld)`**. 
+
+<br>
+
+```{r}
+
+# PREPARE AUTO-GENERATED VISUALIZATION ELEMENTS
+
+sub <- gsub(x = as.character(fit), "ARIMA", "")
+sub <- gsub(x = as.character(sub), ",", ", ")
+
+abb_max_fy <- as.integer(substr(max_fy, 3, 4))
+
+fy_labs <- data.frame(fy = min_fy:(max_fy + 2)) %>%
+  mutate(lab = paste0("'", substr(fy, 3, 4)))
+
+```
+
+```{r}
+
+# CREATE PREDICTION TABLES
+
+pred_sum <- forecast(fit, h = 2) %>%
+  data.frame() %>%
+  rename(pfc = Point.Forecast,
+         pl80 = Lo.80,
+         ph80 = Hi.80,
+         pl95 = Lo.95,
+         ph95 = Hi.95)
+
+pred_fy <- data.frame(fy = c(fy_ts_prep$fy[nrow(fy_ts_prep)] + 1, 
+                             fy_ts_prep$fy[nrow(fy_ts_prep)] + 2))
+
+pred_table <- bind_cols(pred_fy,
+                        pred_sum) %>%
+  mutate(pfc = comma(pfc),
+         pl80 = comma(pl80),
+         ph80 = comma(ph80),
+         pl95 = comma(pl95),
+         ph95 = comma(ph95)) %>%
+  select(fy, pfc:ph95)
+
+```
+
+```{r out.width = "100%", out.height = "100%", fig.align = "center", dpi = 320}
+
+# MANIPULATE FORECAST OBJECT INTERNALS
+
+fore <- forecast(object = fit, h = 2)
+
+fore$lower <- round(fore$lower)
+fore$upper <- round(fore$upper)
+
+max_y <- max(c(max(fore$x), max(fore$upper)))
+
+
+
+# VISUALIZE AUTO-ARIMA
+
+title <- paste0("Predicted FY '", abb_max_fy + 1, 
+                " & '", abb_max_fy + 2,
+                " Applications", sep = " ")
+
+subtitle <- paste0("ARIMA Model ", sub, ", ", college)
+
+plot_ly() %>% 
+  add_lines(x = time(fy_ts), 
+            y = fy_ts,
+            color = I("black"), 
+            name = "Observed") %>% 
+  add_lines(x = time(fore$mean), 
+            y = fore$mean, 
+            color = I(alpha("#0039A6", 1)), 
+            name = "Forecasted") %>%
+    add_ribbons(x = time(fore$mean), 
+              ymin = fore$lower[, 1], 
+              ymax = fore$upper[, 1],
+              color = I(alpha("#0071CE", 0.6)), 
+              name = "80% Confidence") %>%
+    add_ribbons(x = time(fore$mean), 
+              ymin = fore$lower[, 2], 
+              ymax = fore$upper[, 2],
+              color = I(alpha("#97CAEB", 0.6)), 
+              name = "95% Confidence") %>%
+  layout(legend = list(orientation = "h",
+                       x = 0, 
+                       y = -0.051775, 
+                       name = "Test",
+                       bgcolor = alpha("#FFFFFF", 0.6)),
+         margin = list(r = 12.5, t = 50, b = 50),
+         yaxis = list(range = c(0, max_y),
+                      tickformat = ","),
+         xaxis = list(range = c(min_fy - 1, 
+                                max_fy + 2)),
+         annotations = list(list(x = 0.0225, 
+                                 y = 1.15, 
+                                 text = title, 
+                                 font = list(size = 20,
+                                             face = "bold"),
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper'),
+                            list(x = 0.0225, 
+                                 y = 1.075, 
+                                 text = subtitle, 
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper'),
+                            list(x = 1.025, 
+                                 y = -0.125, 
+                                 text = "Source: GSU Data Warehouse", 
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper')))
+
+```
+
+<br>
+
+### Interpretation
+
+During **FY `r pred_table$fy[1]`**, the **`r college`** is estimated to receive approximately 
+**`r pred_table$pfc[1]`** graduate-level applications, with an 80% probability 
+of recieving between **`r pred_table$pl80[1]`** and **`r pred_table$ph80[1]`** 
+applications, as well as a 95% probability of receiving between 
+**`r pred_table$pl95[1]`** and **`r pred_table$ph95[1]`** applications.
+
+In **FY `r pred_table$fy[2]`**, it's estimated to receive approximately 
+**`r pred_table$pfc[2]`** graduate-level applications, with an 80% probability 
+of recieving between **`r pred_table$pl80[2]`** and **`r pred_table$ph80[2]`** 
+applications, as well as a 95% probability of receiving between 
+**`r pred_table$pl95[2]`** and **`r pred_table$ph95[2]`**
+
+Model residuals have a p-value of **`r pval`**, indicating **`r pval_interp`**. 
+
+<br>
+<br>
+
+## Fall Term Forecasts
+
+```{r cache = TRUE}
+
+# PREPARE TIMESERIES FOR ALL TERMS
+
+term_ts_filt <- all %>%
+  group_by(fy, term_full) %>%
+  summarize(applied = sum(applied, na.rm = TRUE)) %>%
+  ungroup() %>%
+  group_by(fy) %>%
+  summarize(n = n(),
+            applied = sum(applied, na.rm = TRUE)) %>%
+  ungroup() %>%
+  filter(n == 3) %>%
+  select(fy)
+
+term_ts_prep <- all %>%
+  mutate(season = gsub(x = term_full, " .*$", ""),
+         cy = gsub(x = term_full, "^.* ", ""),
+         cy = as.double(cy)) %>%
+  group_by(fy, cy, term_full, season) %>%
+  summarize(applied = sum(applied, na.rm = TRUE)) %>%
+  ungroup() %>%
+  filter(fy %in% term_ts_filt$fy)
+
+
+
+# CALCULATE FALL SUMMARY STATS
+
+fall_ts_prep <- term_ts_prep %>%
+  filter(season == "Fall")
+
+avg_fall_app <- mean(fall_ts_prep$applied, na.rm = TRUE)
+avg_fall_app_prc <- mean(fall_ts_prep$applied / 
+                    (term_ts_prep %>% 
+                       group_by(fy) %>% 
+                       summarize(applied = sum(applied, 
+                                               na.rm = TRUE)))$applied, na.rm = TRUE)
+rec_fall_app <- fall_ts_prep$applied[length(fall_ts_prep$applied)]
+rec_fall_app_prc <- fall_ts_prep$applied[length(fall_ts_prep$applied)] / 
+                    (term_ts_prep %>% 
+                       group_by(fy) %>% 
+                       summarize(applied = sum(applied, 
+                                               na.rm = TRUE)))$applied[length(fall_ts_prep$applied)]
+
+min_fall_cy <- min(fall_ts_prep$cy, na.rm = TRUE)
+max_fall_cy <- max(fall_ts_prep$cy, na.rm = TRUE)
+
+
+
+# PREPARE FALL TERM TIMESERIES
+
+fall_ts <- fall_ts_prep %>%
+  select(applied) %>%
+  ts(start = min_fy,
+     end = max_fy)
+
+
+
+# FIT FALL ARIMA MODEL
+
+fit <- auto.arima(fall_ts,
+                  lambda = 0,
+                  stepwise = FALSE, 
+                  approximation = FALSE)
+
+```
+
+```{r include = FALSE, cache = TRUE}
+
+# CHECK RESIDUALS & ASSIGN P-VALUE
+
+res <- checkresiduals(fit)
+
+pval <- round(res$p.value, 3)
+
+pval_interp <- ifelse(pval > 0.1, "no uncaptured information", "potentially uncaptured information")
+
+```
+
+Between calendar years **`r min_fall_cy`** and **`r max_fall_cy`** in the Fall 
+academic term (**FY `r min_fy`** to **FY `r max_fy`**), the **`r college`** 
+received an average of **`r comma(avg_fall_app)`** applications for 
+graduate-level programs, comprising an average of 
+**`r percent(avg_fall_app_prc)`** of total fiscal year enrollment.
+
+In calendar year **`r max_fall_cy`** (**FY `r max_fy`**) in the Fall academic 
+term, the **`r college`** received **`r comma(rec_fall_app)`** applications for 
+graduate-level programs, comprising **`r percent(rec_fall_app_prc)`** of total 
+fiscal year enrollment.
+
+<br>
+
+```{r}
+
+# PREPARE AUTO-GENERATED VISUALIZATION ELEMENTS
+
+sub <- gsub(x = as.character(fit), "ARIMA", "")
+sub <- gsub(x = as.character(sub), ",", ", ")
+
+abb_max_fall <- as.integer(substr(max_fy, 3, 4))
+
+fy_labs <- data.frame(fy = min_fy:(max_fy + 2)) %>%
+  mutate(lab = paste0("'", substr(fy, 3, 4)))
+
+
+
+# CREATE PREDICTION TABLES
+
+pred_sum <- forecast(fit, h = 2) %>%
+  data.frame() %>%
+  rename(pfc = Point.Forecast,
+         pl80 = Lo.80,
+         ph80 = Hi.80,
+         pl95 = Lo.95,
+         ph95 = Hi.95)
+
+pred_fy <- data.frame(fy = c(fall_ts_prep$fy[nrow(fall_ts_prep)] + 1, fall_ts_prep$fy[nrow(fall_ts_prep)] + 2))
+pred_cy <- data.frame(cy = c(fall_ts_prep$cy[nrow(fall_ts_prep)] + 1, fall_ts_prep$cy[nrow(fall_ts_prep)] + 2))
+pred_seas <- data.frame(season = rep(unique(fall_ts_prep$season), 2))
+
+pred_table <- bind_cols(pred_fy,
+                        pred_cy, 
+                        pred_seas,
+                        pred_sum) %>%
+  mutate(term = paste(season, cy),
+         pfc = comma(pfc),
+         pl80 = comma(pl80),
+         ph80 = comma(ph80),
+         pl95 = comma(pl95),
+         ph95 = comma(ph95)) %>%
+  select(fy, term, pfc:ph95)
+
+```
+
+```{r out.width = "100%", out.height = "100%", fig.align = "center", dpi = 320}
+
+# MANIPULATE FORECAST OBJECT INTERNALS
+
+fore <- forecast(object = fit, h = 2)
+
+fore$lower <- round(fore$lower)
+fore$upper <- round(fore$upper)
+
+max_y <- max(c(max(fore$x), max(fore$upper)))
+
+
+
+# VISUALIZE AUTO-ARIMA
+
+title <- paste0("Predicted FY '", abb_max_fy + 1, 
+                " & '", abb_max_fy + 2,
+                " Fall Applications", sep = " ")
+
+subtitle <- paste0("ARIMA Model ", sub, ", ", college)
+
+plot_ly() %>% 
+  add_lines(x = time(fall_ts), 
+            y = fall_ts,
+            color = I("black"), 
+            name = "Observed") %>% 
+  add_lines(x = time(fore$mean), 
+            y = fore$mean, 
+            color = I(alpha("#0039A6", 1)), 
+            name = "Forecasted") %>%
+    add_ribbons(x = time(fore$mean), 
+              ymin = fore$lower[, 1], 
+              ymax = fore$upper[, 1],
+              color = I(alpha("#0071CE", 0.6)), 
+              name = "80% Confidence") %>%
+    add_ribbons(x = time(fore$mean), 
+              ymin = fore$lower[, 2], 
+              ymax = fore$upper[, 2],
+              color = I(alpha("#97CAEB", 0.6)), 
+              name = "95% Confidence") %>%
+  layout(legend = list(orientation = "h",
+                       x = 0, 
+                       y = -0.051775, 
+                       name = "Test",
+                       bgcolor = alpha("#FFFFFF", 0.6)),
+         margin = list(r = 12.5, t = 50, b = 50),
+         yaxis = list(range = c(0, max_y),
+                      tickformat = ","),
+         xaxis = list(range = c(min_fy - 1, 
+                                max_fy + 2)),
+         annotations = list(list(x = 0.0225, 
+                                 y = 1.15, 
+                                 text = title, 
+                                 font = list(size = 20,
+                                             face = "bold"),
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper'),
+                            list(x = 0.0225, 
+                                 y = 1.075, 
+                                 text = subtitle, 
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper'),
+                            list(x = 1.025, 
+                                 y = -0.125, 
+                                 text = "Source: GSU Data Warehouse", 
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper')))
+
+```
+
+<br>
+
+### Interpretation
+
+During the **`r pred_table$term[1]`** term of **FY `r pred_table$fy[1]`**, the 
+**`r college`** is estimated to receive approximately **`r pred_table$pfc[1]`** graduate-level 
+applications, with an 80% probability of recieving between 
+**`r pred_table$pl80[1]`** and **`r pred_table$ph80[1]`** applications, as well 
+as a 95% probability of receiving between **`r pred_table$pl95[1]`** and 
+**`r pred_table$ph95[1]`** applications.
+
+In the **`r pred_table$term[2]`** term of **FY `r pred_table$fy[2]`**, it's 
+estimated to receive approximately **`r pred_table$pfc[2]`** graduate-level applications, with 
+an 80% probability of recieving between **`r pred_table$pl80[2]`** and 
+**`r pred_table$ph80[2]`** applications, as well as a 95% probability of 
+receiving between **`r pred_table$pl95[2]`** and **`r pred_table$ph95[2]`** 
+applications.
+
+Model residuals have a p-value of **`r pval`**, indicating **`r pval_interp`**. 
+
+<br>
+<br>
+
+
+## Spring Term Forecasts
+
+```{r cache = TRUE}
+
+# PREPARE TIMESERIES FOR ALL TERMS
+
+term_ts_filt <- all %>%
+  group_by(fy, term_full) %>%
+  summarize(applied = sum(applied, na.rm = TRUE)) %>%
+  ungroup() %>%
+  group_by(fy) %>%
+  summarize(n = n(),
+            applied = sum(applied, na.rm = TRUE)) %>%
+  ungroup() %>%
+  filter(n == 3) %>%
+  select(fy)
+
+term_ts_prep <- all %>%
+  mutate(season = gsub(x = term_full, " .*$", ""),
+         cy = gsub(x = term_full, "^.* ", ""),
+         cy = as.double(cy)) %>%
+  group_by(fy, cy, term_full, season) %>%
+  summarize(applied = sum(applied, na.rm = TRUE)) %>%
+  ungroup() %>%
+  filter(fy %in% term_ts_filt$fy)
+
+
+
+# CALCULATE SPRING SUMMARY STATS
+
+spring_ts_prep <- term_ts_prep %>%
+  filter(season == "Spring")
+
+avg_spring_app <- mean(spring_ts_prep$applied, na.rm = TRUE)
+avg_spring_app_prc <- mean(spring_ts_prep$applied / 
+                    (term_ts_prep %>% 
+                       group_by(fy) %>% 
+                       summarize(applied = sum(applied, 
+                                               na.rm = TRUE)))$applied, na.rm = TRUE)
+rec_spring_app <- spring_ts_prep$applied[length(spring_ts_prep$applied)]
+rec_spring_app_prc <- spring_ts_prep$applied[length(spring_ts_prep$applied)] / 
+                    (term_ts_prep %>% 
+                       group_by(fy) %>% 
+                       summarize(applied = sum(applied, 
+                                               na.rm = TRUE)))$applied[length(spring_ts_prep$applied)]
+
+min_spring_cy <- min(spring_ts_prep$cy, na.rm = TRUE)
+max_spring_cy <- max(spring_ts_prep$cy, na.rm = TRUE)
+
+
+
+# PREPARE SPRING TERM TIMESERIES
+
+spring_ts <- spring_ts_prep %>%
+  select(applied) %>%
+  ts(start = min_fy,
+     end = max_fy)
+
+
+
+# FIT SPRING ARIMA MODEL
+
+fit <- auto.arima(spring_ts, 
+                  lambda = 0,
+                  stepwise = FALSE, 
+                  approximation = FALSE)
+
+```
+
+```{r include = FALSE, cache = TRUE}
+
+# CHECK RESIDUALS & ASSIGN P-VALUE
+
+res <- checkresiduals(fit)
+
+pval <- round(res$p.value, 3)
+
+pval_interp <- ifelse(pval > 0.1, "no uncaptured information", "potentially uncaptured information")
+
+```
+
+Between calendar years **`r min_spring_cy`** and **`r max_spring_cy`** in the Spring 
+academic term (**FY `r min_fy`** to **FY `r max_fy`**), the **`r college`** 
+received an average of **`r comma(avg_spring_app)`** applications for 
+graduate-level programs, comprising an average of 
+**`r percent(avg_spring_app_prc)`** of total fiscal year enrollment.
+
+In calendar year **`r max_spring_cy`** (**FY `r max_fy`**) in the Spring academic 
+term, the **`r college`** received **`r comma(rec_spring_app)`** applications for 
+graduate-level programs, comprising **`r percent(rec_spring_app_prc)`** of total 
+fiscal year enrollment.
+
+<br>
+
+```{r}
+
+# PREPARE AUTO-GENERATED VISUALIZATION ELEMENTS
+
+sub <- gsub(x = as.character(fit), "ARIMA", "")
+sub <- gsub(x = as.character(sub), ",", ", ")
+
+abb_max_spring <- as.integer(substr(max_fy, 3, 4))
+
+fy_labs <- data.frame(fy = min_fy:(max_fy + 2)) %>%
+  mutate(lab = paste0("'", substr(fy, 3, 4)))
+
+
+
+# CREATE PREDICTION TABLES
+
+pred_sum <- forecast(fit, h = 2) %>%
+  data.frame() %>%
+  rename(pfc = Point.Forecast,
+         pl80 = Lo.80,
+         ph80 = Hi.80,
+         pl95 = Lo.95,
+         ph95 = Hi.95)
+
+pred_fy <- data.frame(fy = c(spring_ts_prep$fy[nrow(spring_ts_prep)] + 1, spring_ts_prep$fy[nrow(spring_ts_prep)] + 2))
+pred_cy <- data.frame(cy = c(spring_ts_prep$cy[nrow(spring_ts_prep)] + 1, spring_ts_prep$cy[nrow(spring_ts_prep)] + 2))
+pred_seas <- data.frame(season = rep(unique(spring_ts_prep$season), 2))
+
+pred_table <- bind_cols(pred_fy,
+                        pred_cy, 
+                        pred_seas,
+                        pred_sum) %>%
+  mutate(term = paste(season, cy),
+         pfc = comma(pfc),
+         pl80 = comma(pl80),
+         ph80 = comma(ph80),
+         pl95 = comma(pl95),
+         ph95 = comma(ph95)) %>%
+  select(fy, term, pfc:ph95)
+
+```
+
+```{r out.width = "100%", out.height = "100%", fig.align = "center", dpi = 320}
+
+# MANIPULATE FORECAST OBJECT INTERNALS
+
+fore <- forecast(object = fit, h = 2)
+
+fore$lower <- round(fore$lower)
+fore$upper <- round(fore$upper)
+
+max_y <- max(c(max(fore$x), max(fore$upper)))
+
+
+
+# VISUALIZE AUTO-ARIMA
+
+title <- paste0("Predicted FY '", abb_max_fy + 1, 
+                " & '", abb_max_fy + 2,
+                " Spring Applications", sep = " ")
+
+subtitle <- paste0("ARIMA Model ", sub, ", ", college)
+
+plot_ly() %>% 
+  add_lines(x = time(spring_ts), 
+            y = spring_ts,
+            color = I("black"), 
+            name = "Observed") %>% 
+  add_lines(x = time(fore$mean), 
+            y = fore$mean, 
+            color = I(alpha("#0039A6", 1)), 
+            name = "Forecasted") %>%
+    add_ribbons(x = time(fore$mean), 
+              ymin = fore$lower[, 1], 
+              ymax = fore$upper[, 1],
+              color = I(alpha("#0071CE", 0.6)), 
+              name = "80% Confidence") %>%
+    add_ribbons(x = time(fore$mean), 
+              ymin = fore$lower[, 2], 
+              ymax = fore$upper[, 2],
+              color = I(alpha("#97CAEB", 0.6)), 
+              name = "95% Confidence") %>%
+  layout(legend = list(orientation = "h",
+                       x = 0, 
+                       y = -0.051775, 
+                       name = "Test",
+                       bgcolor = alpha("#FFFFFF", 0.6)),
+         margin = list(r = 12.5, t = 50, b = 50),
+         yaxis = list(range = c(0, max_y),
+                      tickformat = ","),
+         xaxis = list(range = c(min_fy - 1, 
+                                max_fy + 2)),
+         annotations = list(list(x = 0.0225, 
+                                 y = 1.15, 
+                                 text = title, 
+                                 font = list(size = 20,
+                                             face = "bold"),
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper'),
+                            list(x = 0.0225, 
+                                 y = 1.075, 
+                                 text = subtitle, 
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper'),
+                            list(x = 1.025, 
+                                 y = -0.125, 
+                                 text = "Source: GSU Data Warehouse", 
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper')))
+
+```
+
+<br>
+
+### Interpretation
+
+During the **`r pred_table$term[1]`** term of **FY `r pred_table$fy[1]`**, the 
+**`r college`** is estimated to receive approximately **`r pred_table$pfc[1]`** graduate-level 
+applications, with an 80% probability of recieving between 
+**`r pred_table$pl80[1]`** and **`r pred_table$ph80[1]`** applications, as well 
+as a 95% probability of receiving between **`r pred_table$pl95[1]`** and 
+**`r pred_table$ph95[1]`** applications.
+
+In the **`r pred_table$term[2]`** term of **FY `r pred_table$fy[2]`**, it's 
+estimated to receive approximately **`r pred_table$pfc[2]`** graduate-level applications, with 
+an 80% probability of recieving between **`r pred_table$pl80[2]`** and 
+**`r pred_table$ph80[2]`** applications, as well as a 95% probability of 
+receiving between **`r pred_table$pl95[2]`** and **`r pred_table$ph95[2]`** 
+applications.
+
+Model residuals have a p-value of **`r pval`**, indicating **`r pval_interp`**. 
+
+<br>
+<br>
+
+
+## Summer Term Forecasts
+
+```{r cache = TRUE}
+
+# PREPARE TIMESERIES FOR ALL TERMS
+
+term_ts_filt <- all %>%
+  group_by(fy, term_full) %>%
+  summarize(applied = sum(applied, na.rm = TRUE)) %>%
+  ungroup() %>%
+  group_by(fy) %>%
+  summarize(n = n(),
+            applied = sum(applied, na.rm = TRUE)) %>%
+  ungroup() %>%
+  filter(n == 3) %>%
+  select(fy)
+
+term_ts_prep <- all %>%
+  mutate(season = gsub(x = term_full, " .*$", ""),
+         cy = gsub(x = term_full, "^.* ", ""),
+         cy = as.double(cy)) %>%
+  group_by(fy, cy, term_full, season) %>%
+  summarize(applied = sum(applied, na.rm = TRUE)) %>%
+  ungroup() %>%
+  filter(fy %in% term_ts_filt$fy)
+
+
+
+# CALCULATE SUMMER SUMMARY STATS
+
+summer_ts_prep <- term_ts_prep %>%
+  filter(season == "Summer")
+
+avg_summer_app <- mean(summer_ts_prep$applied, na.rm = TRUE)
+avg_summer_app_prc <- mean(summer_ts_prep$applied / 
+                    (term_ts_prep %>% 
+                       group_by(fy) %>% 
+                       summarize(applied = sum(applied, 
+                                               na.rm = TRUE)))$applied, na.rm = TRUE)
+rec_summer_app <- summer_ts_prep$applied[length(summer_ts_prep$applied)]
+rec_summer_app_prc <- summer_ts_prep$applied[length(summer_ts_prep$applied)] / 
+                    (term_ts_prep %>% 
+                       group_by(fy) %>% 
+                       summarize(applied = sum(applied, 
+                                               na.rm = TRUE)))$applied[length(summer_ts_prep$applied)]
+
+min_summer_cy <- min(summer_ts_prep$cy, na.rm = TRUE)
+max_summer_cy <- max(summer_ts_prep$cy, na.rm = TRUE)
+
+
+
+# PREPARE SUMMER TERM TIMESERIES
+
+summer_ts <- summer_ts_prep %>%
+  select(applied) %>%
+  ts(start = min_fy,
+     end = max_fy)
+
+
+
+# FIT SUMMER ARIMA MODEL
+
+fit <- auto.arima(summer_ts, 
+                  lambda = 0,
+                  stepwise = FALSE, 
+                  approximation = FALSE)
+
+```
+
+```{r include = FALSE, cache = TRUE}
+
+# CHECK RESIDUALS & ASSIGN P-VALUE
+
+res <- checkresiduals(fit)
+
+pval <- round(res$p.value, 3)
+
+pval_interp <- ifelse(pval > 0.1, "no uncaptured information", "potentially uncaptured information")
+
+```
+
+Between calendar years **`r min_summer_cy`** and **`r max_summer_cy`** in the Summer 
+academic term (**FY `r min_fy`** to **FY `r max_fy`**), the **`r college`** 
+received an average of **`r comma(avg_summer_app)`** applications for 
+graduate-level programs, comprising an average of 
+**`r percent(avg_summer_app_prc)`** of total fiscal year enrollment.
+
+In calendar year **`r max_summer_cy`** (**FY `r max_fy`**) in the Summer academic 
+term, the **`r college`** received **`r comma(rec_summer_app)`** applications for 
+graduate-level programs, comprising **`r percent(rec_summer_app_prc)`** of total 
+fiscal year enrollment.
+
+<br>
+
+```{r}
+
+# PREPARE AUTO-GENERATED VISUALIZATION ELEMENTS
+
+sub <- gsub(x = as.character(fit), "ARIMA", "")
+sub <- gsub(x = as.character(sub), ",", ", ")
+
+abb_max_summer <- as.integer(substr(max_fy, 3, 4))
+
+fy_labs <- data.frame(fy = min_fy:(max_fy + 2)) %>%
+  mutate(lab = paste0("'", substr(fy, 3, 4)))
+
+# CREATE PREDICTION TABLES
+
+pred_sum <- forecast(fit, h = 2) %>%
+  data.frame() %>%
+  rename(pfc = Point.Forecast,
+         pl80 = Lo.80,
+         ph80 = Hi.80,
+         pl95 = Lo.95,
+         ph95 = Hi.95)
+
+pred_fy <- data.frame(fy = c(summer_ts_prep$fy[nrow(summer_ts_prep)] + 1, summer_ts_prep$fy[nrow(summer_ts_prep)] + 2))
+pred_cy <- data.frame(cy = c(summer_ts_prep$cy[nrow(summer_ts_prep)] + 1, summer_ts_prep$cy[nrow(summer_ts_prep)] + 2))
+pred_seas <- data.frame(season = rep(unique(summer_ts_prep$season), 2))
+
+pred_table <- bind_cols(pred_fy,
+                        pred_cy, 
+                        pred_seas,
+                        pred_sum) %>%
+  mutate(term = paste(season, cy),
+         pfc = comma(pfc),
+         pl80 = comma(pl80),
+         ph80 = comma(ph80),
+         pl95 = comma(pl95),
+         ph95 = comma(ph95)) %>%
+  select(fy, term, pfc:ph95)
+
+```
+
+```{r out.width = "100%", out.height = "100%", fig.align = "center", dpi = 320}
+
+# MANIPULATE FORECAST OBJECT INTERNALS
+
+fore <- forecast(object = fit, h = 2)
+
+fore$lower <- round(fore$lower)
+fore$upper <- round(fore$upper)
+
+max_y <- max(c(max(fore$x), max(fore$upper)))
+
+
+
+# VISUALIZE AUTO-ARIMA
+
+title <- paste0("Predicted FY '", abb_max_fy + 1, 
+                " & '", abb_max_fy + 2,
+                " Summer Applications", sep = " ")
+
+subtitle <- paste0("ARIMA Model ", sub, ", ", college)
+
+plot_ly() %>% 
+  add_lines(x = time(summer_ts), 
+            y = summer_ts,
+            color = I("black"), 
+            name = "Observed") %>% 
+  add_lines(x = time(fore$mean), 
+            y = fore$mean, 
+            color = I(alpha("#0039A6", 1)), 
+            name = "Forecasted") %>%
+    add_ribbons(x = time(fore$mean), 
+              ymin = fore$lower[, 1], 
+              ymax = fore$upper[, 1],
+              color = I(alpha("#0071CE", 0.6)), 
+              name = "80% Confidence") %>%
+    add_ribbons(x = time(fore$mean), 
+              ymin = fore$lower[, 2], 
+              ymax = fore$upper[, 2],
+              color = I(alpha("#97CAEB", 0.6)), 
+              name = "95% Confidence") %>%
+  layout(legend = list(orientation = "h",
+                       x = 0, 
+                       y = -0.051775, 
+                       name = "Test",
+                       bgcolor = alpha("#FFFFFF", 0.6)),
+         margin = list(r = 12.5, t = 50, b = 50),
+         yaxis = list(range = c(0, max_y),
+                      tickformat = ","),
+         xaxis = list(range = c(min_fy - 1, 
+                                max_fy + 2)),
+         annotations = list(list(x = 0.0225, 
+                                 y = 1.15, 
+                                 text = title, 
+                                 font = list(size = 20,
+                                             face = "bold"),
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper'),
+                            list(x = 0.0225, 
+                                 y = 1.075, 
+                                 text = subtitle, 
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper'),
+                            list(x = 1.025, 
+                                 y = -0.125, 
+                                 text = "Source: GSU Data Warehouse", 
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper')))
+
+```
+
+<br>
+
+### Interpretation
+
+During the **`r pred_table$term[1]`** term of **FY `r pred_table$fy[1]`**, the 
+**`r college`** is estimated to receive approximately **`r pred_table$pfc[1]`** graduate-level 
+applications, with an 80% probability of recieving between 
+**`r pred_table$pl80[1]`** and **`r pred_table$ph80[1]`** applications, as well 
+as a 95% probability of receiving between **`r pred_table$pl95[1]`** and 
+**`r pred_table$ph95[1]`** applications.
+
+In the **`r pred_table$term[2]`** term of **FY `r pred_table$fy[2]`**, it's 
+estimated to receive approximately **`r pred_table$pfc[2]`** graduate-level applications, with 
+an 80% probability of recieving between **`r pred_table$pl80[2]`** and 
+**`r pred_table$ph80[2]`** applications, as well as a 95% probability of 
+receiving between **`r pred_table$pl95[2]`** and **`r pred_table$ph95[2]`** 
+applications.
+
+Model residuals have a p-value of **`r pval`**, indicating **`r pval_interp`**. 
+
+<br>
+<br>
+
+## Seasonal & Cyclic Forecasts
+
+```{r cache = TRUE}
+
+# PREPARE TIMESERIES FOR ALL TERMS
+
+term_ts_prep <- all %>%
+  mutate(season = gsub(x = term_full, " .*$", ""),
+         cy = gsub(x = term_full, "^.* ", ""),
+         cy = as.double(cy),
+         season = factor(x = season,
+                         levels = c("Summer", "Fall", "Spring"))) %>%
+  group_by(fy, cy, term_full, season) %>%
+  summarize(applied = sum(applied, na.rm = TRUE)) %>%
+  ungroup() %>%
+  arrange(fy, cy, season)
+
+avg_app_terms <- mean(term_ts_prep$applied, na.rm = TRUE)
+
+
+
+# PREPARE TIMESERIES
+
+all_ts <- term_ts_prep %>%
+  select(applied) %>%
+  ts(start = min_fy,
+     end = max_fy, 
+     frequency = 3)
+
+
+
+# FIT SUMMER ARIMA MODEL
+
+fit <- auto.arima(all_ts,
+                  lambda = 0,
+                  seasonal = TRUE,
+                  stepwise = FALSE, 
+                  approximation = FALSE)
+
+```
+
+```{r include = FALSE, cache = TRUE}
+
+# CHECK RESIDUALS & ASSIGN P-VALUE
+
+res <- checkresiduals(fit)
+
+pval <- round(res$p.value, 3)
+
+pval_interp <- ifelse(pval > 0.1, "no uncaptured information", "potentially uncaptured information")
+
+```
+
+Accounting for seasonality and cylicity across terms between **FY `r min_fy`** 
+and **FY `r max_fy`**, the **`r college`** received an average of 
+**`r comma(avg_app_terms)`** applications for graduate-level programs during 
+each academic term. 
+
+The following autogenerated ARIMA forecasting predicts total applications by 
+each term for **FY `r max_fy + 1`** and **FY `r max_fy + 2`**, albeit accounting 
+for cylicity and seasonality.
+
+<br>
+
+```{r}
+
+# PREPARE AUTO-GENERATED VISUALIZATION ELEMENTS
+
+sub <- gsub(x = as.character(fit), "ARIMA", "")
+sub <- gsub(x = as.character(sub), ",", ", ")
+
+term_labs <- term_ts_prep
+term_labs[term_labs$season == "Spring" | term_labs$season == "Summer", ] <- NA
+
+term_labs <- term_labs %>%
+  mutate(position = 1:nrow(term_labs)) %>%
+  select(fy, position) %>%
+  filter(!is.na(fy))
+
+pred_labs <- data.frame(fy = c(max(term_labs$fy) + 1, max(term_labs$fy) + 2), 
+                        position = c(max(term_labs$position) + 3, max(term_labs$position) + 6))
+
+all_labs <- bind_rows(term_labs, pred_labs) %>%
+  mutate(fy = paste0("'", substr(fy, 3, 4)))
+
+
+
+# ISOLATE STANDARD ERROR RANGES
+
+pred <- forecast(fit, h = 6) %>%
+  data.frame %>%
+  rename(pfc = Point.Forecast)
+
+pred_table_all <- pred %>%
+  data.frame() %>%
+  mutate(pfc = comma(pfc),
+         pl80 = comma(Lo.80),
+         ph80 = comma(Hi.80),
+         pl95 = comma(Lo.95),
+         ph95 = comma(Hi.95)) %>%
+  select(pfc, pl80:ph95)
+
+# CREATE PREDICTION TABLE
+
+pred_fy <- c(term_ts_prep$fy[(length(term_ts_prep$term_full) - 2):length(term_ts_prep$term_full)] + 1,
+             term_ts_prep$fy[(length(term_ts_prep$term_full) - 2):length(term_ts_prep$term_full)] + 2)
+
+pred_year <- c(term_ts_prep$cy[(length(term_ts_prep$term_full) - 2):length(term_ts_prep$term_full)] + 1,
+               term_ts_prep$cy[(length(term_ts_prep$term_full) - 2):length(term_ts_prep$term_full)] + 2)
+
+term_ts_prep$season <- as.character(term_ts_prep$season)
+
+pred_seas <- c(term_ts_prep$season[(length(term_ts_prep$term_full) - 2):length(term_ts_prep$term_full)],
+               term_ts_prep$season[(length(term_ts_prep$term_full) - 2):length(term_ts_prep$term_full)])
+
+pred_table_final <- data.frame(FY = pred_fy,
+                         Term = paste(pred_seas, pred_year)) %>%
+  bind_cols(pred_table_all) %>%
+  rename("Applications" = pfc,
+         "Min. (80%)" = pl80,
+         "Max. (80%)" = ph80,
+         "Min. (95%)" = pl95,
+         "Max. (95%)" = ph95)
+
+```
+
+```{r out.width = "100%", out.height = "100%", fig.align = "center", dpi = 320}
+
+# MANIPULATE FORECAST OBJECT INTERNALS
+
+fore <- forecast(object = fit, h = 6)
+
+fore$lower <- round(fore$lower)
+fore$upper <- round(fore$upper)
+
+max_y <- max(fore$x) * 1.15
+
+
+
+# VISUALIZE AUTO-ARIMA
+
+title <- "Predictions with Seasonality & Cyclicity"
+
+subtitle <- paste0("ARIMA Model ", sub, ", ", college)
+
+plot_ly() %>% 
+  add_lines(x = time(all_ts), 
+            y = all_ts,
+            color = I("black"), 
+            name = "Observed") %>% 
+  add_lines(x = time(fore$mean), 
+            y = fore$mean, 
+            color = I(alpha("#0039A6", 1)), 
+            name = "Forecasted") %>%
+    add_ribbons(x = time(fore$mean), 
+              ymin = fore$lower[, 1], 
+              ymax = fore$upper[, 1],
+              color = I(alpha("#0071CE", 0.6)), 
+              name = "80% Confidence") %>%
+    add_ribbons(x = time(fore$mean), 
+              ymin = fore$lower[, 2], 
+              ymax = fore$upper[, 2],
+              color = I(alpha("#97CAEB", 0.6)), 
+              name = "95% Confidence") %>%
+  layout(legend = list(orientation = "h",
+                       x = 0, 
+                       y = -0.051775, 
+                       name = "Test",
+                       bgcolor = alpha("#FFFFFF", 0.6)),
+         margin = list(r = 12.5, t = 50, b = 50),
+         yaxis = list(range = c(0, max_y),
+                      tickformat = ","),
+         xaxis = list(range = c(min_fy - 1, 
+                                max_fy + 2)),
+         annotations = list(list(x = 0.0225, 
+                                 y = 1.15, 
+                                 text = title, 
+                                 font = list(size = 20,
+                                             face = "bold"),
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper'),
+                            list(x = 0.0225, 
+                                 y = 1.075, 
+                                 text = subtitle, 
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper'),
+                            list(x = 1.025, 
+                                 y = -0.125, 
+                                 text = "Source: GSU Data Warehouse", 
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper')))
+
+```
+
+<br>
+
+### Interpretation
+
+In the **`r pred_table_final$Term[1]`** term in **FY `r max_fy + 1`**, the **`r college`** 
+is estimated to receive approximately **`r pred_table_all$pfc[1]`** graduate-level 
+applications, with an 80% probability of receiving between 
+**`r pred_table_all$pl80[1]`** and **`r pred_table_all$ph80[1]`** applications 
+and a 95% probability of receiving between **`r pred_table_all$pl95[1]`** and 
+**`r pred_table_all$ph95[1]`**.
+
+The **`r pred_table_final$Term[2]`** term in **FY `r max_fy + 1`** is predicted 
+to receive **`r pred_table_all$pfc[2]`** graduate-level applications, with an 
+80% probability of receiving between **`r pred_table_all$pl80[2]`** and 
+**`r pred_table_all$ph80[2]`** applications and a 95% probability of receiving 
+between **`r pred_table_all$pl95[2]`** and **`r pred_table_all$ph95[2]`**.
+
+Lastly, the **`r pred_table_final$Term[3]`** term in **FY `r max_fy + 1`** is 
+estimated to receive approximately **`r pred_table_all$pfc[3]`** graduate-level applications, 
+with an 80% probability of receiving between **`r pred_table_all$pl80[3]`** and 
+**`r pred_table_all$ph80[3]`** applications and a 95% probability of receiving 
+between **`r pred_table_all$pl95[3]`** and **`r pred_table_all$ph95[3]`**.
+
+Model residuals have a p-value of **`r pval`**, indicating **`r pval_interp`**. 
+
+<br>
+
+### Additional Forecasts
+
+Additional forecasting for **FY `r max_fy + 2`** is provided in the following table.
+
+<br>
+
+<center>
+
+```{r cache = TRUE}
+
+pred_table_final %>%
+  kable() %>%
+  kable_styling(full_width = FALSE,
+                bootstrap_options = c("striped", "hover"))
+
+```
+
+</center>
+
+<br>
+<br>
+
+# New Enrollment Guide
+
+**FY `r max_fy + 1`** enrollment recommendations for the **`r college`** are 
+calculated via a 3% increase to a rolling average of the two most recent fiscal 
+years with complete data, viz. **FY `r max_fy - 1`** and **FY `r max_fy`**. 
+Moreover, recommendations use only OIE-reported enrollees, i.e. Masters and 
+Doctoral students.
+
+The following provides:
+
+* Total **`r college`** enrollment recommendations for **FY `r max_fy + 1`** 
+* Enrollment recommendations for **`r pred_table_final$Term[1]`**, 
+**`r pred_table_final$Term[2]`**, and **`r pred_table_final$Term[3]`**
+* Enrollment recommendations by academic term and program
+
+<br>
+<br>
+
+## FY `r max_fy + 1` New Enrollment
+
+```{r cache = TRUE}
+
+fy_enrolled <- all %>%
+  filter(level == "Degree") %>%
+  group_by(fy) %>%
+  summarize(enr_new = sum(enr_new, na.rm = TRUE),
+            enr_con = sum(enr_con, na.rm = TRUE),
+            enrolled = sum(enrolled, na.rm = TRUE)) %>%
+  ungroup()
+
+fy_enrolled_2yr <- fy_enrolled[(nrow(fy_enrolled) - 1):nrow(fy_enrolled), ]
+
+avg_fy_enr_2yr <- round(mean(fy_enrolled_2yr$enrolled, na.rm = TRUE), 3)
+
+avg_fy_enr_2yr_rnd <- round(avg_fy_enr_2yr)
+
+new_fy_enr_goal <- round(avg_fy_enr_2yr * 1.03)
+
+```
+
+In **FY `r fy_enrolled_2yr$fy[1]`** and **FY `r fy_enrolled_2yr$fy[2]`**, the 
+**`r college`** enrolled **`r comma(fy_enrolled_2yr$enrolled[1])`** and 
+**`r comma(fy_enrolled_2yr$enrolled[2])`**, respectively, averaging 
+**`r comma(avg_fy_enr_2yr)`** degree-seeking, graduate-level students over both 
+fiscal years.
+
+Increasing this rolling average by 3% yields a total annual recommendation of 
+**`r comma(new_fy_enr_goal)`** *new or continuing* enrollees.
+
+<br>
+
+```{r out.width = "100%", out.height = "100%", fig.align = "center", dpi = 320}
+
+fy_enr_viz <- fy_enrolled %>%
+  select(fy, enrolled) %>%
+  mutate(status = "Historical") %>%
+  bind_rows(data.frame(fy = c(max_fy, max_fy + 1),
+                       enrolled = c(fy_enrolled$enrolled[nrow(fy_enrolled)], new_fy_enr_goal),
+                       status = "Target"))
+
+viz_tbl <- fy_enr_viz %>%
+  rename(FY = fy,
+         Enrolled = enrolled,
+         Status = status)
+
+title <- paste("Graduate & Degree-Earning Enrollees")
+
+subtitle <- paste0("FY ", max_fy + 1, " Recommended Enrollees: ", 
+                   comma(new_fy_enr_goal), ", ", college)
+
+viz <- ggplot(viz_tbl, aes(x = FY, y = Enrolled, color = Status)) +
+  geom_smooth(alpha = 0.1,
+              method = "lm", 
+              color = "gray90") +
+  geom_path(size = 1.05) +
+  lims(x = c(min_fy - 1, NA)) +
+  labs(x = NULL,
+       y = NULL,
+       color = NULL, 
+       caption = "Source: GSU Data Warehouse")+
+  scale_y_continuous(labels = comma, 
+                     limits = c(0, NA)) +
+  scale_color_manual(values = c("#97CAEB",
+                               "#0039A6")) + 
+  theme_minimal()
+
+ggplotly(viz) %>%
+  layout(legend = list(orientation = "h",
+                       x = 0.04, 
+                       y = -0.051775, 
+                       name = "Test",
+                       bgcolor = alpha("#FFFFFF", 0.6)),
+         margin = list(r = 12.5, t = 50, b = 50),
+         yaxis = list(tickformat = ","),
+         annotations = list(list(x = 0.0225, 
+                                 y = 1.15, 
+                                 text = title, 
+                                 font = list(size = 20,
+                                             face = "bold"),
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper'),
+                            list(x = 0.0225, 
+                                 y = 1.075, 
+                                 text = subtitle, 
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper'),
+                            list(x = 0.92, 
+                                 y = -0.125, 
+                                 text = "Source: GSU Data Warehouse", 
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper')))
+
+```
+
+```{r}
+
+fy_enr_coef <- round(as.numeric(lm(enrolled ~ fy, 
+                                   unique(fy_enr_viz[, 1:2]))$coef[2]), 3)
+
+fy_enr_coef_dir <- ifelse(fy_enr_coef > 0, "positive", "negative")
+
+```
+
+<br>
+
+Adjusted for targets, **FY `r min_fy`** through **FY `r max_fy + 1`** 
+indicate a **`r fy_enr_coef_dir`** trend with a coefficient of 
+**`r fy_enr_coef`**.
+
+<br>
+<br>
+
+## New Enrollment by Term
+
+```{r cache = TRUE}
+
+fy_enr_terms <- all %>%
+  filter(level == "Degree") %>%
+  group_by(fy, term_full) %>%
+  summarize(enrolled = sum(enrolled, na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(season = gsub(x = term_full, " .*$", ""),
+         season = factor(season, 
+                         levels = c("Summer", "Fall", "Spring"), 
+                         ordered = TRUE),
+         cy = gsub(x = term_full, "^.* ", "")) %>%
+  arrange(fy, season) %>%
+  select(fy, term_full, season, cy, enrolled)
+
+fy_enr_terms <- fy_enr_terms %>%
+  group_by(fy) %>%
+  summarize(year_tot = sum(enrolled, na.rm = TRUE)) %>%
+  ungroup() %>%
+  right_join(fy_enr_terms) %>%
+  mutate(enr_prc = enrolled / year_tot) %>%
+  select(fy, term_full, season, cy, enrolled, enr_prc)
+  
+fy_enr_filt <- unique(fy_enr_terms$fy)[(length(unique(fy_enr_terms$fy)) - 1):
+                                        length(unique(fy_enr_terms$fy))]
+
+fy_enr_2yr_count <- fy_enr_terms %>%
+  filter(fy %in% fy_enr_filt) %>%
+  select(fy, term_full, enrolled, enr_prc)
+
+fy_enr_1 <- sum(fy_enr_2yr_count$enrolled[1:3], na.rm = TRUE)
+fy_enr_2 <- sum(fy_enr_2yr_count$enrolled[4:6], na.rm = TRUE)
+
+avg_trm_2yr_contr <- fy_enr_terms %>%
+  filter(fy %in% fy_enr_filt) %>%
+  group_by(season) %>%
+  summarize(avg_enr_prc = mean(enr_prc, na.rm = TRUE)) %>%
+  ungroup() %>%
+  mutate(contribution = round(avg_enr_prc * new_fy_enr_goal))
+
+new_fy_prop_goals <- fy_enr_terms %>%
+  filter(fy == max_fy) %>%
+  select(season, cy) %>%
+  mutate(cy = as.numeric(cy) + 1) %>%
+  right_join(avg_trm_2yr_contr) %>%
+  mutate(term = paste(season, cy))
+
+```
+
+In **FY `r max_fy - 1`**, the **`r college`** enrolled or maintained 
+**`r comma(fy_enr_1)`** degree-seeking, graduate-level students. Specifcally, in
+**`r fy_enr_2yr_count$term_full[1]`**, **`r fy_enr_2yr_count$term_full[2]`**, and
+**`r fy_enr_2yr_count$term_full[3]`** it enrolled or retained 
+**`r comma(fy_enr_2yr_count$enrolled[1])`**, 
+**`r comma(fy_enr_2yr_count$enrolled[2])`**, and 
+**`r comma(fy_enr_2yr_count$enrolled[3])`** students, respectively. 
+
+In **FY `r max_fy`**, it enrolled or maintained 
+**`r comma(fy_enr_2)`** degree-seeking, graduate-level students. Specifcally, in
+**`r fy_enr_2yr_count$term_full[4]`**, **`r fy_enr_2yr_count$term_full[5]`**, and
+**`r fy_enr_2yr_count$term_full[6]`** it enrolled or retained 
+**`r comma(fy_enr_2yr_count$enrolled[4])`**, 
+**`r comma(fy_enr_2yr_count$enrolled[5])`**, and 
+**`r comma(fy_enr_2yr_count$enrolled[6])`** students, respectively. 
+
+On average, across both fiscal years,, the **`r avg_trm_2yr_contr$season[1]`**, 
+**`r avg_trm_2yr_contr$season[2]`**, and **`r avg_trm_2yr_contr$season[3]`**
+semesters contributed **`r comma(avg_trm_2yr_contr$contribution[1])`** 
+(**`r percent(avg_trm_2yr_contr$avg_enr_prc[1])`**), 
+**`r comma(avg_trm_2yr_contr$contribution[2])`** 
+(**`r percent(avg_trm_2yr_contr$avg_enr_prc[2])`**), and 
+**`r comma(avg_trm_2yr_contr$contribution[3])`** 
+(**`r percent(avg_trm_2yr_contr$avg_enr_prc[3])`**) students to total 
+enrollment, respecitvely.
+
+<br>
+<br>
+
+### Contribution-Based Guides
+
+Given the two-year rolling average of proportional contributions by both 
+**FY `r max_fy - 1`** and **FY `r max_fy`** terms, recommended enrollment 
+for **`r new_fy_prop_goals$term[1]`**, **`r new_fy_prop_goals$term[2]`**, and
+**`r new_fy_prop_goals$term[3]`** at the **`r college`** are 
+**`r new_fy_prop_goals$contribution[1]`**, 
+**`r new_fy_prop_goals$contribution[2]`**, and 
+**`r new_fy_prop_goals$contribution[3]`** enrolled or retained students, 
+respectively.
+
+<br>
+
+### View by Term
+
+The following sparklines visualize the **`r college`'s** graduate-level and 
+degree-seeking target enrollees, historical enrollment, and trendlines by 
+academic term from **FY `r min_fy`** to **FY `r max_fy`**. 
+
+<br>
+
+```{r out.width = "100%", out.height = "100%", fig.align = "center", dpi = 320}
+
+# PROPORTIONAL GOALS BY TERM: VISUALIZATION
+
+new_term_viz <- new_fy_prop_goals %>%
+  rename(enr_prc = avg_enr_prc,
+         enrolled = contribution,
+         term_full = term) %>%
+  mutate(fy = max_fy + 1,
+         type = "Target") %>%
+  select(fy, term_full, season, cy, enrolled, enr_prc, type)
+
+
+old_terms_viz1 <- fy_enr_terms %>%
+  mutate(cy = as.numeric(cy),
+         type = "Historical")
+
+old_terms_viz2 <- old_terms_viz1 %>%
+  filter(fy == max_fy) %>%
+  mutate(type = "Target")
+
+terms_viz <- bind_rows(new_term_viz,
+                       old_terms_viz1,
+                       old_terms_viz2) %>%
+  select(fy, term_full, season, enrolled, type)
+
+viz_tbl <- terms_viz %>%
+  rename(FY = fy,
+         Enrolled = enrolled,
+         Type = type)
+
+title <- paste("Contributions by Term,")
+
+subtitle <- paste0("FY ", max_fy + 1, " Recommended Enrollees: ", comma(new_fy_enr_goal), ", ", college)
+
+viz <- ggplot(viz_tbl, aes(x = FY, y = Enrolled, color = Type)) +
+    geom_smooth(alpha = 0.1,
+              method = "lm", 
+              color = "gray90") +
+  geom_line(size = 1.05) +
+  lims(x = c(min_fy - 1, NA)) +
+  labs(x = NULL,
+       y = NULL,
+       color = NULL) +
+  scale_y_continuous(labels = comma, 
+                     limits = c(0, NA)) +
+  scale_color_manual(values = c("#97CAEB",
+                               "#0039A6")) + 
+  facet_grid(~season) +
+  theme_minimal()
+
+grobly <- ggplotly(viz)
+
+grobly %>%
+  layout(legend = list(orientation = "h",
+                       x = 0.01, 
+                       y = -0.051775, 
+                       name = "Test",
+                       bgcolor = alpha("#FFFFFF", 0.6)),
+         margin = list(t = 75, b = 50),
+         yaxis = list(tickformat = ","),
+         annotations = list(list(x = 0.0225, 
+                                 y = 1.235, 
+                                 text = title, 
+                                 font = list(size = 20,
+                                             face = "bold"),
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper'),
+                            list(x = 0.0225, 
+                                 y = 1.16, 
+                                 text = subtitle, 
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper'),
+                            list(x = 0.99, 
+                                 y = -0.145, 
+                                 text = "Source: GSU Data Warehouse", 
+                                 showarrow = F, 
+                                 xref = 'paper', 
+                                 yref = 'paper')))
+
+```
+
+```{r}
+
+lm_summer <- terms_viz %>% select(-type) %>% filter(season == "Summer") %>% unique()
+lm_fall <- terms_viz %>% select(-type) %>% filter(season == "Fall") %>% unique()
+lm_spring <- terms_viz %>% select(-type) %>% filter(season == "Spring") %>% unique()
+
+coef_summer <- as.numeric(lm(enrolled ~ fy, lm_summer)$coef[2])
+coef_fall <- as.numeric(lm(enrolled ~ fy, lm_fall)$coef[2])
+coef_spring <- as.numeric(lm(enrolled ~ fy, lm_spring)$coef[2])
+
+coef_summer_dir <- ifelse(coef_summer > 0, "positive", "negative")
+coef_fall_dir <- ifelse(coef_fall > 0, "positive", "negative")
+coef_spring_dir <- ifelse(coef_spring > 0, "positive", "negative")
+
+coef_term_summer <- as.character(new_term_viz %>% 
+                                   filter(season == "Summer") %>% select(term_full))
+coef_term_fall <- as.character(new_term_viz %>% 
+                                 filter(season == "Fall") %>% select(term_full))
+coef_term_spring <- as.character(new_term_viz %>% 
+                                   filter(season == "Spring") %>% select(term_full))
+
+```
+
+<br>
+
+Accounting for **FY `r max_fy + 1`** recommended enrollment, the above linear 
+models depict by term: 
+
+* **`r coef_term_summer`:** A **`r coef_summer_dir`** trend with a coefficient 
+of **`r round(coef_summer, 3)`**.
+* **`r coef_term_fall`:** A **`r coef_fall_dir`** trend with a coefficient 
+of **`r round(coef_fall, 3)`**.
+* **`r coef_term_spring`:** A **`r coef_spring_dir`** trend with a coefficient 
+of **`r round(coef_spring, 3)`**.
+
+<br>
+
+### Read by Term
+
+Recommended **FY `r max_fy + 1`** graduate-level enrollment for the 
+**`r college`** are organized as follows:
+
+<br>
+
+```{r cache = TRUE}
+
+# PROPORTIONAL GOALS BY TERM: TABLE
+
+new_term_goals <- new_fy_prop_goals %>%
+  select(term, avg_enr_prc, contribution)
+
+new_term_table <- new_term_goals %>%
+  mutate(avg_enr_prc = percent(avg_enr_prc),
+         contribution = comma(contribution),
+         `Fiscal Year` = max_fy + 1) %>%
+  rename(Term = term,
+         `Contribution (%)` = avg_enr_prc,
+         Enrollees = contribution) %>%
+  select(`Fiscal Year`, Term, `Contribution (%)`, Enrollees)
+
+new_term_table %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), 
+                full_width = FALSE)
+
+```
+
+<br>
+<br>
+
+## New Enrollment by Program
+
+```{r cache = TRUE}
+
+# PREP DATA SETS
+
+prg_enr <- all %>%
+  filter(level == "Degree") %>%
+  rename(term = term_full) %>%
+  mutate(season = gsub(x = term, " .*$", ""),
+         season = factor(season, 
+                         levels = c("Summer", "Fall", "Spring"),
+                         ordered = TRUE),
+         cy = gsub(x = term, "^.* ", "")) %>%
+  select(fy, term, cy, season, program, enrolled)
+
+prg_enr_fy <- prg_enr %>%
+  group_by(fy) %>%
+  summarize(fy_enrolled = sum(enrolled, na.rm = TRUE)) %>%
+  ungroup()
+
+prg_enr_term <- prg_enr %>%
+  group_by(fy, cy, season, term) %>%
+  summarize(tot_programs = n(),
+            term_enrolled = sum(enrolled, na.rm = TRUE)) %>%
+  ungroup() %>%
+  arrange(fy, season)
+
+programs_prep <- prg_enr %>%
+  left_join(prg_enr_term) %>%
+  left_join(prg_enr_fy) %>%
+  mutate(prg_fy_prc = enrolled / fy_enrolled,
+         prg_trm_prc = enrolled / term_enrolled,
+         trm_fy_prc = term_enrolled / fy_enrolled)
+
+prg_prep_2yr <- programs_prep %>%
+  filter(fy >= max_fy - 1)
+
+avg_contribution <- prg_prep_2yr %>%
+  group_by(season, program) %>%
+  summarize(avg_term_contribution = mean(prg_trm_prc)) %>%
+  ungroup()
+
+program_goals <- new_term_goals %>%
+  mutate(season = gsub(x = term, " .*$", "")) %>%
+  right_join(avg_contribution) %>%
+  rename(term_to_fy_contr = avg_enr_prc,
+         new_fy_contribution = contribution,
+         prg_to_term_contribution = avg_term_contribution) %>%
+  mutate(term_enr_goals = prg_to_term_contribution * new_fy_contribution)
+  
+```
+
+During **FY `r max_fy - 1`** and **FY `r max_fy`**, the **`r college`** averaged 
+**`r percent(new_term_viz$enr_prc[1])`**, 
+**`r percent(new_term_viz$enr_prc[2])`**, 
+and **`r percent(new_term_viz$enr_prc[3])`** 
+contributions to official graduate-level enrollment in the 
+**`r new_term_viz$season[1]`**, **`r new_term_viz$season[2]`**, and 
+**`r new_term_viz$season[3]`** terms, respectively. 
+
+Applying a 3% increase to individual **`r college`** programs, the following 
+calculates and provides recommended enrollment by both program and semester for
+**FY `r max_fy + 1`**.
+
+<br>
+<br>
+
+### `r new_term_goals$term[1]` Programs
+
+The two-year rolling average contribution of 
+**`r percent(new_term_goals$avg_enr_prc[1])`** for **`r new_term_goals$term[1]`** 
+of programs in **FY `r max_fy + 1`**, increased by 3%, result in the following 
+recommended program enrollment of **`r comma(new_term_goals$contribution[1])`** 
+graduate-level students.
+
+<br>
+
+```{r cache = TRUE}
+
+program_goals_filt <- program_goals %>%
+  filter(term == new_term_goals$term[1]) %>%
+  mutate(new_fy_contribution = new_fy_contribution * prg_to_term_contribution) %>%
+  arrange(desc(new_fy_contribution))
+
+program_goals_filt_tbl <- program_goals_filt %>%
+  mutate(term_to_fy_contr = percent(term_to_fy_contr),
+         new_fy_contribution = comma(new_fy_contribution),
+         prg_to_term_contribution = percent(prg_to_term_contribution),
+         fy = max_fy + 1) %>%
+  select(fy, term, program, new_fy_contribution, prg_to_term_contribution) %>%
+  rename("FY" = fy,
+         "Term" = term,
+         "Program" = program,
+         "Enrollees" = new_fy_contribution,
+         "Contribution (%)" = prg_to_term_contribution)
+
+```
+
+```{r cache = TRUE}
+
+# PREP DYNAMIC GRAPHICAL ELEMENTS
+
+n_new_students <- sum(program_goals_filt$term_enr_goals, na.rm = TRUE)
+
+top_lab <- NA
+
+if (nrow(program_goals_filt) == 1){
+  
+  top_lab <- "Sole Program Enrollment Target"
+  
+} else if (nrow(program_goals_filt) > 1 & nrow(program_goals_filt) < 10){
+  
+  top_lab <- "Program Enrollment Targets"
+  
+} else {
+  
+  top_lab <- "Top 10 Program Enrollment Targets"
+  
+}
+
+programs_viz <- program_goals_filt %>%
+  arrange(desc(new_fy_contribution)) %>%
+  mutate(id = 1:nrow(program_goals_filt)) %>%
+  filter(id <= 10)
+
+
+
+# DYNAMIC KNITR PLOT DIMENSIONS
+
+n_programs <- nrow(programs_viz)
+
+plot_size <- NA
+
+plot_size <- ifelse(n_programs >= 10, 450, 
+                    ifelse(n_programs == 2, 150, 
+                           ifelse(n_programs == 1, 100,
+                                  n_programs * 50)))
+
+```
+
+```{r out.width = "100%", out.height = "100%", fig.align = "center", dpi = 320}
+
+programs_viz <- programs_viz %>%
+  rename(Program = program,
+         Contribution = new_fy_contribution) %>%
+  mutate(Contribution = round(Contribution),
+         Program = reorder(Program, Contribution))
+
+viz <- ggplot(programs_viz, aes(x = Program, y = Contribution)) +
+  geom_bar(stat = "identity",
+           fill = "#0071CE",
+           alpha = 0.6) +
+  scale_y_continuous(label = comma) + 
+  labs(x = NULL,
+       y = "Recommended Enrollees") +
+  coord_flip() +
+  theme_minimal()
+
+ggplotly(viz) %>% layout(height = plot_size)
+
+```
+
+<br>
+
+```{r cache = TRUE}
+
+# PRINT STYLIZED TABLE
+
+program_goals_filt_tbl %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("hover", "striped"))
+
+```
+
+<br>
+<br>
+
+
+
+### `r new_term_goals$term[2]` Programs
+
+The two-year rolling average contribution of 
+**`r percent(new_term_goals$avg_enr_prc[2])`** for **`r new_term_goals$term[2]`** 
+of programs in **FY `r max_fy + 1`**, increased by 3%, result in the following 
+recommended program enrollment among 
+**`r comma(new_term_goals$contribution[2])`** graduate-level students.
+
+<br>
+
+```{r cache = TRUE}
+
+program_goals_filt <- program_goals %>%
+  filter(term == new_term_goals$term[2]) %>%
+  mutate(new_fy_contribution = new_fy_contribution * prg_to_term_contribution) %>%
+  arrange(desc(new_fy_contribution))
+
+program_goals_filt_tbl <- program_goals_filt %>%
+  mutate(term_to_fy_contr = percent(term_to_fy_contr),
+         new_fy_contribution = comma(new_fy_contribution),
+         prg_to_term_contribution = percent(prg_to_term_contribution),
+         fy = max_fy + 1) %>%
+  select(fy, term, program, new_fy_contribution, prg_to_term_contribution) %>%
+  rename("FY" = fy,
+         "Term" = term,
+         "Program" = program,
+         "Enrollees" = new_fy_contribution,
+         "Contribution (%)" = prg_to_term_contribution)
+
+```
+
+```{r cache = TRUE}
+
+# PREP DYNAMIC GRAPHICAL ELEMENTS
+
+n_new_students <- sum(program_goals_filt$term_enr_goals, na.rm = TRUE)
+
+top_lab <- NA
+
+if (nrow(program_goals_filt) == 1){
+  
+  top_lab <- "Sole Program Enrollment Target"
+  
+} else if (nrow(program_goals_filt) > 1 & nrow(program_goals_filt) < 10){
+  
+  top_lab <- "Program Enrollment Targets"
+  
+} else {
+  
+  top_lab <- "Top 10 Program Enrollment Targets"
+  
+}
+
+programs_viz <- program_goals_filt %>%
+  arrange(desc(new_fy_contribution)) %>%
+  mutate(id = 1:nrow(program_goals_filt)) %>%
+  filter(id <= 10)
+
+
+
+# DYNAMIC KNITR PLOT DIMENSIONS
+
+n_programs <- nrow(programs_viz)
+
+plot_size <- NA
+
+plot_size <- ifelse(n_programs >= 10, 450, 
+                    ifelse(n_programs == 2, 150, 
+                           ifelse(n_programs == 1, 100,
+                                  n_programs * 50)))
+
+```
+
+```{r out.width = "100%", out.height = "100%", fig.align = "center", dpi = 320}
+
+programs_viz <- programs_viz %>%
+  rename(Program = program,
+         Contribution = new_fy_contribution) %>%
+  mutate(Contribution = round(Contribution),
+         Program = reorder(Program, Contribution))
+
+viz <- ggplot(programs_viz, aes(x = Program, y = Contribution)) +
+  geom_bar(stat = "identity",
+           fill = "#0071CE",
+           alpha = 0.6) +
+  scale_y_continuous(label = comma) + 
+  labs(x = NULL,
+       y = "Recommended Enrollees") +
+  coord_flip() +
+  theme_minimal()
+
+ggplotly(viz) %>% layout(height = plot_size)
+
+```
+
+<br>
+
+```{r cache = TRUE}
+
+# PRINT STYLIZED TABLE
+
+program_goals_filt_tbl %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("hover", "striped"))
+
+```
+
+<br>
+<br>
+
+
+
+### `r new_term_goals$term[3]` Programs
+
+The two-year rolling average contribution of 
+**`r percent(new_term_goals$avg_enr_prc[3])`** for **`r new_term_goals$term[3]`** 
+of programs in **FY `r max_fy + 1`**, increased by 3%, result in the following 
+recommended program enrollment among 
+**`r comma(new_term_goals$contribution[3])`** graduate-level students.
+
+<br>
+
+```{r cache = TRUE}
+
+program_goals_filt <- program_goals %>%
+  filter(term == new_term_goals$term[3]) %>%
+  mutate(new_fy_contribution = new_fy_contribution * prg_to_term_contribution) %>%
+  arrange(desc(new_fy_contribution))
+
+program_goals_filt_tbl <- program_goals_filt %>%
+  mutate(term_to_fy_contr = percent(term_to_fy_contr),
+         new_fy_contribution = comma(new_fy_contribution),
+         prg_to_term_contribution = percent(prg_to_term_contribution),
+         fy = max_fy + 1) %>%
+  select(fy, term, program, new_fy_contribution, prg_to_term_contribution) %>%
+  rename("FY" = fy,
+         "Term" = term,
+         "Program" = program,
+         "Enrollees" = new_fy_contribution,
+         "Contribution (%)" = prg_to_term_contribution)
+
+```
+
+```{r cache = TRUE}
+
+# PREP DYNAMIC GRAPHICAL ELEMENTS
+
+n_new_students <- sum(program_goals_filt$term_enr_goals, na.rm = TRUE)
+
+top_lab <- NA
+
+if (nrow(program_goals_filt) == 1){
+  
+  top_lab <- "Sole Program Enrollment Target"
+  
+} else if (nrow(program_goals_filt) > 1 & nrow(program_goals_filt) < 10){
+  
+  top_lab <- "Program Enrollment Targets"
+  
+} else {
+  
+  top_lab <- "Top 10 Program Enrollment Targets"
+  
+}
+
+programs_viz <- program_goals_filt %>%
+  arrange(desc(new_fy_contribution)) %>%
+  mutate(id = 1:nrow(program_goals_filt)) %>%
+  filter(id <= 10)
+
+
+
+# DYNAMIC KNITR PLOT DIMENSIONS
+
+n_programs <- nrow(programs_viz)
+
+plot_size <- NA
+
+plot_size <- ifelse(n_programs >= 10, 450, 
+                    ifelse(n_programs == 2, 150, 
+                           ifelse(n_programs == 1, 100,
+                                  n_programs * 50)))
+
+```
+
+```{r out.width = "100%", out.height = "100%", fig.align = "center", dpi = 320}
+
+programs_viz <- programs_viz %>%
+  rename(Program = program,
+         Contribution = new_fy_contribution) %>%
+  mutate(Contribution = round(Contribution),
+         Program = reorder(Program, Contribution))
+
+viz <- ggplot(programs_viz, aes(x = Program, y = Contribution)) +
+  geom_bar(stat = "identity",
+           fill = "#0071CE",
+           alpha = 0.6) +
+  scale_y_continuous(label = comma) + 
+  labs(x = NULL,
+       y = "Recommended Enrollees") +
+  coord_flip() +
+  theme_minimal()
+
+ggplotly(viz) %>% layout(height = plot_size)
+
+```
+
+<br>
+
+```{r cache = TRUE}
+
+# PRINT STYLIZED TABLE
+
+program_goals_filt_tbl %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("hover", "striped"))
+
+```
+
+<br>
+<br>
+
+# Documentation
+
+With access to the `BREPTS` and `WPRD` database in the GSU Data Warehouse, 
+database queries, preprocessing, and report creation for the **`r college`** 
+*Admissions Report* are reproducible in their entirety, from raw data to the 
+present data product, using documentation found in this 
+[**GitHub repository**](https://github.com/jamisoncrawford/admissions).
+
+* **Last Updated:** 2020-03-04
+* **Version:** 1.0
+
+<br>
+<br>
+
+# References
+
+**Akiake, Hirotogu (1998).**
+*Information Theory and an Extension of the Maximum Likihood Principle.*
+Retrieved from [**Institute of Statistical Mathematics**](https://link.springer.com/chapter/10.1007/978-1-4612-1694-0_15)
+on `r format(Sys.time(), '%d %B %Y')`.
+
+**The Graduate School (2020).** 
+*A Campus Without Boundaries.*
+Retrieved from [**Georgia State University**](https://graduate.gsu.edu/) on 
+`r format(Sys.time(), '%d %B %Y')`.
+
+**Hyndman, Rob J. & Yeasmin Khandakar (2008).**
+*Automatic Time Series Forecasting: The forecast Package for R.*
+Retrieved from [**Journal of Statistical Software**](https://www.jstatsoft.org/article/view/v027i03) 
+on `r format(Sys.time(), '%d %B %Y')`.
+
+**National Center for Education Statistics (2020).** 
+*Integrated Postsecondary Education Data System (IPEDS) Survey Components.* 
+Retrieved from [**National Center for Education Statistics**](https://nces.ed.gov/ipeds/use-the-data/survey-components) 
+on `r format(Sys.time(), '%d %B %Y')`.
+
+**Georgia State University (2020).**
+*Office of Institutional Effectiveness.* 
+Retrieved from [**Georgia State University**](https://oie.gsu.edu/) on 
+`r format(Sys.time(), '%d %B %Y')`.
+
+**University System of Georgia: Office of Strategic Research & Analysis (2006).** 
+*Student Information Reporting System (SIRS)'s Student Data Element Dictionary *
+*(SDED).* Retrieved from [**USG Strategy & Fiscal Affairs Division: Research & Policy Analysis**](https://www.usg.edu/research/data_reporting_systems/student_information_reporting) 
+on `r format(Sys.time(), '%d %B %Y')`.
+
+<br>
+<br>
+
+# Contact
+
+Contact information for offices and authors of the *Admissions Report*.
+
+<br>
+
+
+
+### Schools & Offices
+
+Contact [**The Graduate School's Graduate Admissions**](https://graduate.gsu.edu/) 
+at Georgia State University:
+
+* **Hours:** Monday-Friday, 8:30 a.m. to 5:15 p.m.
+* **Phone:** (404) 413-2444
+* **Email:** [**gradapply@gsu.edu**](mailto:gradapply@gsu.edu)
+* **Location:** Sparks Hall 200
+
+Contact the [**Office of Institutional Effectiveness**](https://oie.gsu.edu/) 
+at Georgia State University:
+
+* **Phone:** (404) 413-2601
+* **Location:** 1 Park Place South, Ste 1001
+
+<br>
+
+
+
+### Report Author
+
+Contact Jamison R. Crawford, Institutional Research Associate:
+
+* **Phone:** (404) 413-1404
+* **Email:** [**jcrawford52@gsu.edu**](mailto:jcrawford52@gsu.edu)
+
+<br>
+
+
+### Contributors
+
+Contact Lita M. Malveaux, Director of Graduate Admissions:
+
+* **Phone:** (404) 413-2559
+* **Email:** [**lmalveaux@gsu.edu**](mailto:lmalveaux@gsu.edu)
+
+<br>
+<br>
+
+# Appendix
+
+<br>
+
+## ARIMA Model Accuracy
+
+The optimal forecasting ARIMA (Autoregressive Integrated Moving Average) models 
+were automatically generated using a Hyndman-Khandakar 
+([**2008**](https://www.jstatsoft.org/article/view/v027i03)) algorithm that 
+employs unit root tests, minimizes additive errors via *Akaike's Information* 
+*Criterion* or *AICc*, 
+([**1998**](https://link.springer.com/chapter/10.1007/978-1-4612-1694-0_15)), 
+and calculates maximum likelihood estimation based on *n* intervals per the 
+**`r college`'s** available historical data.
+
+```{r cache = TRUE}
+
+fit_fy <- auto.arima(fy_ts, 
+                  lambda = 0,
+                  stepwise = FALSE, 
+                  approximation = FALSE)
+
+fit_fall <- auto.arima(fall_ts,
+                  lambda = 0,
+                  stepwise = FALSE, 
+                  approximation = FALSE)
+
+fit_spring <- auto.arima(spring_ts, 
+                  lambda = 0,
+                  stepwise = FALSE, 
+                  approximation = FALSE)
+
+fit_summer <- auto.arima(summer_ts, 
+                  lambda = 0,
+                  stepwise = FALSE, 
+                  approximation = FALSE)
+
+fit_terms <- auto.arima(all_ts,
+                  lambda = 0,
+                  seasonal = TRUE,
+                  stepwise = FALSE, 
+                  approximation = FALSE)
+
+
+arima_models <- bind_cols(data.frame(model = c("Fiscal Year", "Fall", "Spring", "Summer", "All Terms")),
+                          bind_rows(data.frame(accuracy(fit_fy)),
+                                    data.frame(accuracy(fit_fall)),
+                                    data.frame(accuracy(fit_spring)),
+                                    data.frame(accuracy(fit_summer)),
+                                    data.frame(accuracy(fit_terms))))
+
+arima_models <- arima_models %>%
+  rename(Model = model) %>%
+  select(-ACF1) %>%
+  mutate(ME = round(ME, 2),
+         RMSE = round(RMSE, 2),
+         MAE = round(MAE, 2),
+         MPE = round(MPE, 2),
+         MAPE = round(MAPE, 2),
+         MASE = round(MASE, 2))
+
+```
+
+<br>
+
+The accuracy of ARIMA models is measured using the following:
+
+* **ME:** Mean Error
+* **RMSE:** Root Mean Squared Error
+* **MAE:** Mean Absolute Error
+* **MPE:** Mean Percentage Error
+* **MAPE:** Mean Absolute Percentage Error
+* **MASE:** Mean Absolute Scaled Error
+
+<br>
+
+The following provides accuracy measures for each ARIMA model in order of 
+appearance (see `Model`).
+
+<br>
+
+```{r cache = TRUE}
+
+arima_models %>%
+  kable() %>%
+  kable_styling(bootstrap_options = c("hover", "striped"), full_width = FALSE)
+
+```
